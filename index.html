@@ -1,0 +1,3253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BANG! — Wild West Card Game (offline)</title>
+  <link rel="icon" href="data:,">
+  <style>
+/* ============ BANG! — Wild West theme ============ */
+:root {
+  --bg: #17100a;
+  --wood: #241708;
+  --panel: #2c1d10;
+  --panel2: #382613;
+  --line: #5d4326;
+  --gold: #e8b84b;
+  --gold-dim: #b98f36;
+  --red: #d0453a;
+  --green: #57b85a;
+  --blue: #4a90d9;
+  --cream: #f3e6c8;
+  --muted: #a8946f;
+  --card-red: #c0392b;
+}
+
+* { box-sizing: border-box; }
+
+/* `display` on components must never beat the hidden attribute */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at top, #2a1c0e 0%, var(--bg) 70%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 3px, transparent 3px 34px);
+  color: var(--cream);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, .logo { font-family: Georgia, "Times New Roman", serif; letter-spacing: .5px; }
+
+.screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.hidden { display: none !important; }
+
+/* ============ buttons / inputs ============ */
+.btn {
+  background: linear-gradient(#6b4a24, #4a3115);
+  border: 1px solid var(--line);
+  color: var(--cream);
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform .08s, box-shadow .15s, filter .15s;
+}
+.btn:hover { filter: brightness(1.18); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: linear-gradient(#e8b84b, #c08c2c);
+  color: #241505;
+  border-color: #8a6420;
+  box-shadow: 0 2px 10px rgba(232,184,75,.25);
+}
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--cream); border-color: var(--line); }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.btn.danger { background: linear-gradient(#a5372c, #7c281f); border-color: #5e1d16; }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+input, select {
+  background: #1d130a;
+  border: 1px solid var(--line);
+  color: var(--cream);
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 15px;
+  outline: none;
+}
+input:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(232,184,75,.18); }
+input::placeholder { color: #7d6a4d; }
+
+.row { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.error { color: #ef7b6f; min-height: 20px; margin: 10px 0 0; font-size: 14px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+
+/* ============ login ============ */
+.login-box, .lobby-box {
+  background: linear-gradient(160deg, var(--panel2), var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 34px 38px;
+  width: min(560px, 94vw);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+}
+.logo {
+  font-size: 74px;
+  margin: 0;
+  color: var(--gold);
+  text-shadow: 3px 3px 0 #5e3d12, 0 0 26px rgba(232,184,75,.35);
+}
+.logo span { color: var(--red); }
+.subtitle { color: var(--muted); margin: 4px 0 22px; }
+.flavor { color: #7d6a4d; font-style: italic; font-size: 13px; margin-top: 24px; }
+#name { width: 100%; margin-bottom: 4px; }
+#code { width: 110px; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
+
+/* ============ lobby ============ */
+.lobby-box h2 { margin-top: 0; color: var(--gold); }
+.code {
+  background: #14100a;
+  border: 1px dashed var(--gold-dim);
+  padding: 3px 12px;
+  border-radius: 6px;
+  letter-spacing: 5px;
+  font-size: 26px;
+  color: var(--gold);
+}
+.hint { color: var(--muted); font-size: 14px; margin-top: 6px; }
+#players { list-style: none; padding: 0; margin: 18px 0; display: flex; flex-direction: column; gap: 8px; }
+#players li {
+  background: #211507;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+#players li .who { flex: 1; text-align: left; }
+#players li .badge { font-size: 12px; color: var(--gold); border: 1px solid var(--gold-dim); border-radius: 20px; padding: 1px 8px; }
+#players li.bot .who::after { content: " \1F916"; }
+#lobbyHint { color: var(--muted); font-size: 14px; }
+
+/* ============ game layout ============ */
+#game { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 14px;
+  background: rgba(10,7,4,.85);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.tag { color: var(--muted); background: #1d130a; border: 1px solid var(--line); padding: 3px 9px; border-radius: 6px; }
+.turn-tag { color: var(--gold); font-weight: 700; }
+.turn-tag.mine { color: #7ef07e; text-shadow: 0 0 8px rgba(126,240,126,.5); }
+.timer { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.timer.low { color: #ef7b6f; font-weight: 700; }
+
+#main { flex: 1; display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+
+#table {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  min-height: 0;
+  padding: 12px;
+  gap: 8px;
+  position: relative;
+}
+
+#opponents { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: flex-start; }
+
+#centerInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  position: relative;
+}
+#pileInfo {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+  flex-direction: column;
+  text-align: center;
+}
+.pile-count { display: inline-flex; align-items: center; gap: 7px; }
+
+/* ============ seat panels ============ */
+.seat {
+  background: linear-gradient(#2c1d10, #241708);
+  border: 1.5px solid var(--line);
+  border-radius: 11px;
+  padding: 7px 11px;
+  min-width: 158px;
+  max-width: 210px;
+  position: relative;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+.seat.turn { border-color: var(--gold); box-shadow: 0 0 14px rgba(232,184,75,.5); }
+.seat.waiting { border-color: var(--blue); box-shadow: 0 0 14px rgba(74,144,217,.55); }
+.seat.dead { opacity: .5; filter: grayscale(.85); }
+.seat.me { border-style: dashed; }
+.seat.targetable { cursor: pointer; border-color: var(--red); animation: pulse 1s infinite; }
+.seat.targetable:hover { transform: scale(1.04); background: #3a2412; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(208,69,58,.75); }
+  50% { box-shadow: 0 0 18px rgba(208,69,58,1); }
+}
+
+.seat-top { display: flex; align-items: center; gap: 6px; }
+.pname { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.seat-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.char-name { color: #d8c28e; }
+.seat-badges { display: flex; gap: 4px; align-items: center; }
+
+.role {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 1px 8px;
+  color: #1d1206;
+  text-transform: uppercase;
+}
+.role.sheriff { background: linear-gradient(#ffd76e, #e0a92f); }
+.role.deputy { background: linear-gradient(#ffe9a8, #d9c06a); }
+.role.outlaw { background: linear-gradient(#ef7b6f, #c0392b); color: #fff; }
+.role.renegade { background: linear-gradient(#8de08f, #43a047); color: #fff; }
+.role.unknown { background: #4a3a24; color: #cbb891; }
+
+.hp { display: flex; gap: 3px; margin-top: 6px; }
+.hp i {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #ff8f7a, #b3271b 65%);
+  box-shadow: inset 0 -1px 2px rgba(0,0,0,.55);
+}
+.hp i.empty { background: #3a2c1b; box-shadow: none; opacity: .55; }
+
+.seat-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.handcount { display: inline-flex; align-items: center; gap: 5px; }
+.card-back-mini {
+  width: 14px; height: 19px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(45deg, #7d2d22 0 3px, #5e1f17 3px 6px);
+  border: 1px solid #3d140f;
+  display: inline-block;
+}
+.inplay { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; min-height: 0; }
+.auto-flag { font-size: 11px; color: #9fb4d8; }
+
+/* ============ my area ============ */
+#mySeat {
+  background: rgba(0,0,0,.28);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+#mySeat .info { display: flex; flex-direction: column; gap: 4px; min-width: 210px; }
+#mySeat .inplay { margin-top: 0; }
+#hand {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  min-height: 116px;
+  padding: 6px 4px 2px;
+}
+#hand.empty { color: #6f5e43; font-style: italic; font-size: 14px; align-items: center; }
+
+#actionbar {
+  min-height: 56px;
+  background: rgba(10,7,4,.72);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.prompt { font-size: 15px; color: var(--gold); font-weight: 600; }
+.prompt.sub { color: var(--muted); font-weight: 400; font-size: 13.5px; }
+.need-badge { background: var(--red); border-radius: 20px; padding: 2px 10px; font-weight: 700; font-size: 13px; }
+
+/* ============ cards ============ */
+.card {
+  width: 76px;
+  height: 106px;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #fbf3dd 0%, #ecdfba 100%);
+  border: 2px solid #8a6d3b;
+  color: #2b2115;
+  position: relative;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45);
+  cursor: default;
+  user-select: none;
+  transition: transform .1s, box-shadow .15s;
+  flex-shrink: 0;
+}
+.card.blue { border-color: #2f6fb5; background: linear-gradient(160deg, #eaf2fb, #cfe0f3); }
+.card.weapon { background: linear-gradient(160deg, #e9e9ee, #cfd2da); border-color: #555a66; }
+.card.playable { cursor: pointer; }
+.card.playable:hover { transform: translateY(-8px); box-shadow: 0 10px 18px rgba(0,0,0,.55); }
+.card.selected {
+  transform: translateY(-12px);
+  outline: 3px solid var(--gold);
+  box-shadow: 0 0 18px rgba(232,184,75,.8);
+}
+.card .corner {
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+  font-family: Georgia, serif;
+}
+.card .corner.br { left: auto; top: auto; right: 4px; bottom: 3px; transform: rotate(180deg); }
+.card .corner .suit { display: block; font-size: 12px; }
+.card .corner .suit.red, .card.red-suit { color: var(--card-red); }
+.card .face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 12px 4px 10px;
+  text-align: center;
+}
+.card .icon { font-size: 24px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.card .cname { font-size: 10.5px; font-weight: 800; letter-spacing: .2px; text-transform: uppercase; color: #463517; }
+.card.blue .cname { color: #1f4f80; }
+.card .hint-txt { font-size: 8.5px; color: #7a6a54; }
+
+.card.mini {
+  width: 44px;
+  height: 60px;
+  border-radius: 6px;
+}
+.card.mini .icon { font-size: 15px; }
+.card.mini .cname { font-size: 7.5px; }
+.card.mini .corner { font-size: 8.5px; left: 3px; top: 2px; }
+.card.mini .corner.br { right: 3px; bottom: 2px; }
+.card.mini .face { padding: 8px 2px 6px; }
+
+.card.tiny { width: 38px; height: 52px; }
+.card.tiny .icon { font-size: 13px; }
+.card.tiny .cname { font-size: 6.8px; }
+.card.tiny .corner { font-size: 7.5px; }
+.card.tiny .face { padding: 7px 2px 5px; }
+
+.card-back {
+  width: 54px; height: 76px;
+  border-radius: 7px;
+  background:
+    repeating-linear-gradient(45deg, #7d2d22 0 6px, #661f17 6px 12px);
+  border: 2px solid #3d140f;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45);
+  position: relative;
+}
+.card-back::after {
+  content: "\2665";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,220,180,.5);
+  font-size: 22px;
+}
+
+/* ============ log ============ */
+#logPanel {
+  border-left: 1px solid var(--line);
+  background: rgba(12,8,4,.7);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#logPanel h3 {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 15px;
+  color: var(--gold);
+  border-bottom: 1px solid var(--line);
+}
+#log { flex: 1; overflow-y: auto; padding: 8px 12px; font-size: 13px; line-height: 1.5; }
+#log div { padding: 2px 0; color: #cbbda0; border-bottom: 1px dotted rgba(93,67,38,.35); }
+#log div.sys { color: #8fa3c0; font-style: italic; }
+#log div.good { color: #86d98a; }
+#log div.bad { color: #ef8d80; }
+#log div.death { color: #ff6b5a; font-weight: 700; }
+#log div.win { color: var(--gold); font-weight: 800; font-size: 14px; }
+#log div.char { color: #c9a0e8; }
+#log div.draw { color: #dcc489; }
+#log div.turn { color: var(--gold); font-weight: 700; margin-top: 5px; }
+#log div.reward { color: #86d98a; font-weight: 600; }
+#log div.penalty { color: #ef8d80; font-weight: 600; }
+#log div.action { color: #efe6d1; }
+
+/* ============ modals ============ */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal .panel {
+  background: linear-gradient(160deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold-dim);
+  border-radius: 14px;
+  padding: 22px 26px;
+  max-width: min(760px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0,0,0,.7);
+}
+.modal h2 { margin-top: 0; color: var(--gold); }
+.modal .sub { color: var(--muted); font-size: 14px; }
+.cards-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+.options-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+
+table.result { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
+table.result td, table.result th { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+table.result tr.winner td { color: #86d98a; font-weight: 700; }
+table.result tr.dead { opacity: .55; }
+
+/* ============ toast ============ */
+#toast {
+  position: fixed;
+  top: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #8e2b21;
+  color: #ffe9e4;
+  border: 1px solid #d0453a;
+  padding: 9px 20px;
+  border-radius: 24px;
+  font-size: 14.5px;
+  font-weight: 600;
+  z-index: 90;
+  box-shadow: 0 8px 24px rgba(0,0,0,.55);
+  animation: toastIn .18s ease-out;
+}
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* ============ responsive ============ */
+@media (max-width: 980px) {
+  #main { grid-template-columns: 1fr; grid-template-rows: 1fr 170px; }
+  #logPanel { border-left: none; border-top: 1px solid var(--line); }
+  .seat { min-width: 132px; padding: 6px 8px; }
+  .card { width: 64px; height: 92px; }
+  .card .icon { font-size: 20px; }
+}
+
+/* ---- offline edition extras ---- */
+#code, #join, #copy { display: none !important; }
+.offline-note { color: #7d6a4d; font-size: 12.5px; margin-top: 12px; }
+.offline-note b { color: #a8946f; }
+  </style>
+</head>
+<body>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="login" class="screen">
+    <div class="login-box">
+      <h1 class="logo">BANG<span>!</span></h1>
+      <p class="subtitle">A Wild West social deduction card game &mdash; 4 to 7 players</p>
+      <input type="text" id="name" placeholder="Your name" maxlength="16" autocomplete="off">
+      <div class="row">
+        <button id="create" class="btn primary">New Game</button>
+        <input type="text" id="code" placeholder="CODE" maxlength="4" autocomplete="off">
+        <button id="join" class="btn">Join Room</button>
+      </div>
+      <p id="err" class="error"></p>
+      <p class="offline-note"><b>Offline edition</b> &mdash; the whole game (engine + bots) runs inside this page.
+        Just pick your name and play. No server, no account, no internet needed.</p>
+      <p class="flavor">&ldquo;Draw, partner... if you&rsquo;ve got the nerve.&rdquo;</p>
+    </div>
+  </div>
+
+  <!-- ============ LOBBY ============ -->
+  <div id="lobby" class="screen" hidden>
+    <div class="lobby-box">
+      <h2>Table <span id="roomCode" class="code"></span> <button id="copy" class="btn ghost small" title="Copy code">&#10697;</button></h2>
+      <p class="hint">Your table is ready &mdash; pick the seats and bot skill, then deal.</p>
+      <ul id="players"></ul>
+      <div id="hostControls" hidden>
+        <div class="row">
+          <label class="field">Players
+            <select id="targetCount">
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </label>
+          <label class="field">Bot skill
+            <select id="botDiff">
+              <option value="beginner">Beginner</option>
+              <option value="amateur" selected>Amateur</option>
+              <option value="pro">Pro</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <button id="fillBots" class="btn">Fill with bots</button>
+          <button id="start" class="btn primary">Start Game</button>
+        </div>
+      </div>
+      <p id="lobbyHint"></p>
+      <p id="err2" class="error"></p>
+    </div>
+  </div>
+
+  <!-- ============ GAME ============ -->
+  <div id="game" hidden>
+    <div id="topbar">
+      <span id="topCode" class="tag"></span>
+      <span id="topDeck" class="tag"></span>
+      <span id="topDiscard" class="tag"></span>
+      <span id="turnTag" class="turn-tag"></span>
+      <span id="timerTag" class="timer"></span>
+      <button id="leave" class="btn ghost small" data-act="leave">Leave</button>
+    </div>
+
+    <div id="main">
+      <div id="table">
+        <div id="opponents"></div>
+        <div id="centerInfo">
+          <div id="pileInfo"></div>
+        </div>
+        <div id="mySeat"></div>
+        <div id="hand"></div>
+        <div id="actionbar"></div>
+      </div>
+      <div id="logPanel">
+        <h3>Trail of the West</h3>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <div id="choiceModal" class="modal" hidden></div>
+    <div id="pickModal" class="modal" hidden></div>
+    <div id="gameover" class="modal" hidden></div>
+    <div id="toast" hidden></div>
+  </div>
+
+  <!-- ==== the whole game, inlined — engine + bots + server emulation + UI ==== -->
+  <script>
+/* ---------- rules engine (bang/game.js) ---------- */
+const __engine = (function () {
+  const module = { exports: {} };
+  (function (module, exports) {
+'use strict';
+/* ========================================================================= *
+ * BANG! — card game engine (pure logic, no dependencies)
+ *
+ * Faithful implementation of the base-game rules (DV Giochi, 2002):
+ *  - 80-card deck, 4-7 players, secret roles + public characters
+ *  - Sheriff starts; turns: Draw -> Play -> Discard
+ *  - Distance / weapon range, "draw!" checks (Barrel, Jail, Dynamite)
+ *  - Out-of-turn responses (Missed!, Beer while dying, Indians!, Duel)
+ *  - Elimination rewards & penalties, role-based win conditions
+ *
+ * The engine is synchronous. Server (or tests) call `action(pid, act)` and
+ * then re-distribute `stateFor(pid)` to each player.
+ * ========================================================================= */
+
+const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+const SUITS = ['S', 'H', 'D', 'C'];
+const SUIT_SYMBOL = { S: '\u2660', H: '\u2665', D: '\u2666', C: '\u2663' };
+const SUIT_NAME = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' };
+
+// Official base deck composition (80 cards), from bang.dvgiochi.com card list.
+const CARD_DEFS = {
+  bang:         { name: 'Bang!',         icon: '\u{1F52B}', cat: 'brown',  count: 25 },
+  missed:       { name: 'Missed!',       icon: '\u{1F4A8}', cat: 'brown',  count: 12 },
+  beer:         { name: 'Beer',          icon: '\u{1F37A}', cat: 'brown',  count: 6 },
+  catbalou:     { name: 'Cat Balou',     icon: '\u{1F4A5}', cat: 'brown',  count: 4 },
+  panic:        { name: 'Panic!',        icon: '\u{1FAF2}', cat: 'brown',  count: 4 },
+  duel:         { name: 'Duel',          icon: '\u2694\uFE0F',  cat: 'brown',  count: 3 },
+  indians:      { name: 'Indians!',      icon: '\u{1FAB6}', cat: 'brown',  count: 2 },
+  gatling:      { name: 'Gatling',       icon: '\u{1F525}', cat: 'brown',  count: 1 },
+  generalstore: { name: 'General Store', icon: '\u{1F381}', cat: 'brown',  count: 2 },
+  saloon:       { name: 'Saloon',        icon: '\u{1F943}', cat: 'brown',  count: 1 },
+  stagecoach:   { name: 'Stagecoach',    icon: '\u{1F3DC}\uFE0F', cat: 'brown', count: 2 },
+  wellsfargo:   { name: 'Wells Fargo',   icon: '\u{1F682}', cat: 'brown',  count: 1 },
+  barrel:       { name: 'Barrel',        icon: '\u{1F6E2}\uFE0F', cat: 'blue', count: 2 },
+  jail:         { name: 'Jail',          icon: '\u26D3\uFE0F',  cat: 'blue',  count: 3 },
+  dynamite:     { name: 'Dynamite',      icon: '\u{1F4A3}', cat: 'blue',  count: 1 },
+  scope:        { name: 'Scope',         icon: '\u{1F52D}', cat: 'blue',  count: 1 },
+  mustang:      { name: 'Mustang',       icon: '\u{1F40E}', cat: 'blue',  count: 2 },
+  volcanic:     { name: 'Volcanic',      icon: '\u{1F52B}', cat: 'weapon', count: 2, range: 1, multiBang: true },
+  schofield:    { name: 'Schofield',     icon: '\u{1F52B}', cat: 'weapon', count: 3, range: 2 },
+  remington:    { name: 'Remington',     icon: '\u{1F52B}', cat: 'weapon', count: 1, range: 3 },
+  revcarabine:  { name: 'Rev. Carabine', icon: '\u{1F52B}', cat: 'weapon', count: 1, range: 4 },
+  winchester:   { name: 'Winchester',    icon: '\u{1F52B}', cat: 'weapon', count: 1, range: 5 },
+};
+// (weapon range: Volcanic 1, Schofield 2, Remington 3, Rev. Carabine 4, Winchester 5)
+
+const CHARACTERS = [
+  { id: 'bart',       name: 'Bart Cassidy',   hp: 4, text: 'Each time he loses a life point, he immediately draws a card from the deck.' },
+  { id: 'blackjack',  name: 'Black Jack',     hp: 4, text: 'During phase 1 he reveals the second card he draws: if it is red, he draws one additional card.' },
+  { id: 'calamity',   name: 'Calamity Janet', hp: 4, text: 'She can use Bang! cards as Missed! and vice versa.' },
+  { id: 'elgringo',   name: 'El Gringo',      hp: 3, text: 'Each time he loses a life point due to a card played by another player, he draws a random card from that player\u2019s hand.' },
+  { id: 'jesse',      name: 'Jesse Jones',    hp: 4, text: 'During phase 1 he may draw the first card randomly from another player\u2019s hand instead of the deck.' },
+  { id: 'jourdonnais',name: 'Jourdonnais',    hp: 4, text: 'He is considered to have a Barrel in play at all times.' },
+  { id: 'kit',        name: 'Kit Carlson',    hp: 4, text: 'During phase 1 he looks at the top 3 cards, keeps 2 and puts the other back on top of the deck.' },
+  { id: 'lucky',      name: 'Lucky Duke',     hp: 4, text: 'Each time he is required to "draw!", he flips two cards and chooses the result he prefers.' },
+  { id: 'paul',       name: 'Paul Regret',    hp: 3, text: 'He is considered to have a Mustang in play at all times: all other players are +1 distance from him.' },
+  { id: 'pedro',      name: 'Pedro Ramirez',  hp: 4, text: 'During phase 1 he may draw the first card from the top of the discard pile instead of the deck.' },
+  { id: 'rose',       name: 'Rose Doolan',    hp: 4, text: 'She is considered to have a Scope in play at all times: she sees all other players at -1 distance.' },
+  { id: 'sid',        name: 'Sid Ketchum',    hp: 4, text: 'At any time he may discard 2 cards from his hand to regain one life point.' },
+  { id: 'slab',       name: 'Slab the Killer',hp: 4, text: 'Players need to play 2 Missed! to cancel his Bang! cards.' },
+  { id: 'suzy',       name: 'Suzy Lafayette', hp: 4, text: 'As soon as she has no cards in her hand, she draws a card from the draw pile.' },
+  { id: 'vulture',    name: 'Vulture Sam',    hp: 4, text: 'Whenever a character is eliminated, he takes all of that player\u2019s cards.' },
+  { id: 'willy',      name: 'Willy the Kid',  hp: 4, text: 'He can play any number of Bang! cards during his turn.' },
+];
+const CHAR_BY_ID = Object.fromEntries(CHARACTERS.map(c => [c.id, c]));
+
+const ROLE_NAME = { sheriff: 'Sheriff', deputy: 'Deputy', outlaw: 'Outlaw', renegade: 'Renegade' };
+
+// Role distribution per official rules.
+function rolesFor(n) {
+  const r = ['sheriff', 'renegade'];
+  if (n === 4) r.push('outlaw', 'outlaw');
+  if (n === 5) r.push('outlaw', 'outlaw', 'deputy');
+  if (n === 6) r.push('outlaw', 'outlaw', 'outlaw', 'deputy');
+  if (n === 7) r.push('outlaw', 'outlaw', 'outlaw', 'deputy', 'deputy');
+  return r;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function cardLabel(c) {
+  return `${c.rank}${SUIT_SYMBOL[c.suit]}`;
+}
+
+function E(error) { return { ok: false, error }; }
+function OK(extra) { return Object.assign({ ok: true }, extra || {}); }
+
+class Game {
+  constructor(playerList) {
+    if (playerList.length < 4 || playerList.length > 7) {
+      throw new Error('BANG! needs 4-7 players');
+    }
+    this.players = playerList.map((p, i) => ({
+      id: p.id,
+      name: p.name,
+      seat: i,
+      charId: null,
+      role: null,
+      hp: 0,
+      maxHp: 0,
+      alive: true,
+      hand: [],   // [{uid,key,rank,suit}]
+      play: [],   // blue cards in play
+      bangsUsed: 0,
+      auto: !!p.bot, // bot or disconnected human (auto-played)
+    }));
+    this.deck = [];
+    this.discard = [];
+    this.turn = 0;
+    this.phase = 'setup'; // setup | draw | play | ended
+    this.pending = null;  // {kind, player, ..., next}
+    this.log = [];
+    this.ended = false;
+    this.winners = null;
+  }
+
+  /* ---------------- setup ---------------- */
+
+  start() {
+    // Roles
+    const roles = shuffle(rolesFor(this.players.length));
+    this.players.forEach((p, i) => { p.role = roles[i]; });
+
+    // Characters
+    const chars = shuffle(CHARACTERS.map(c => c.id));
+    this.players.forEach((p, i) => {
+      p.charId = chars[i];
+      p.maxHp = CHAR_BY_ID[p.charId].hp + (p.role === 'sheriff' ? 1 : 0);
+      p.hp = p.maxHp;
+      p.alive = true;
+    });
+
+    // Deck
+    this.deck = buildDeck();
+    this.discard = [];
+
+    // Deal starting hands = bullets (max life points)
+    for (const p of this.players) {
+      p.hand = [];
+      this.drawCards(p, p.maxHp, null);
+    }
+
+    this.turn = this.players.findIndex(p => p.role === 'sheriff');
+    this.phase = 'draw';
+    this.log.push({ t: `Game starts! ${this.players[this.turn].name} (Sheriff) begins.`, cls: 'sys' });
+    this.beginTurn();
+    return this;
+  }
+
+  /* ---------------- helpers ---------------- */
+
+  byId(id) { return this.players.find(p => p.id === id) || null; }
+  current() { return this.players[this.turn] || null; }
+  currentId() { const c = this.current(); return c ? c.id : null; }
+  alivePlayers() { return this.players.filter(p => p.alive); }
+  aliveCount() { return this.players.filter(p => p.alive).length; }
+
+  addLog(t, cls) {
+    this.log.push({ t, cls: cls || '' });
+    if (this.log.length > 300) this.log.splice(0, this.log.length - 300);
+  }
+
+  hasCard(p, key) {
+    return p.play.some(c => c.key === key);
+  }
+
+  ensureDeck() {
+    if (this.deck.length > 0) return;
+    if (this.discard.length === 0) return;
+    this.deck = shuffle(this.discard.splice(0));
+    this.addLog('Deck is empty \u2014 the discard pile is reshuffled.', 'sys');
+  }
+
+  takeFromDeck(n) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      this.ensureDeck();
+      if (this.deck.length === 0) break;
+      out.push(this.deck.pop());
+    }
+    return out;
+  }
+
+  // Flip top card for a "draw!" check (result card is discarded).
+  flipCard() {
+    this.ensureDeck();
+    if (this.deck.length === 0) return null;
+    const c = this.deck.pop();
+    this.discard.push(c);
+    return c;
+  }
+
+  drawCards(p, n, reason) {
+    const cards = this.takeFromDeck(n);
+    p.hand.push(...cards);
+    if (reason && cards.length) this.addLog(`${p.name} ${reason} (${cards.length} card${cards.length > 1 ? 's' : ''}).`);
+    this.afterHand(p);
+    return cards;
+  }
+
+  // Suzy Lafayette trigger.
+  afterHand(p) {
+    if (!p || !p.alive) return;
+    if (p.charId === 'suzy' && p.hand.length === 0) {
+      this.ensureDeck();
+      if (this.deck.length > 0) {
+        p.hand.push(this.deck.pop());
+        this.addLog('Suzy Lafayette has no cards \u2014 she draws one.', 'char');
+      }
+    }
+  }
+
+  weaponCard(p) { return p.play.find(c => CARD_DEFS[c.key].cat === 'weapon') || null; }
+
+  range(p) {
+    const w = this.weaponCard(p);
+    return w ? CARD_DEFS[w.key].range : 1; // Colt .45 = 1
+  }
+
+  bangsLeft(p) {
+    const unlimited = p.charId === 'willy' || (this.weaponCard(p) && CARD_DEFS[this.weaponCard(p).key].multiBang);
+    if (unlimited) return 99;
+    return Math.max(0, 1 - p.bangsUsed);
+  }
+
+  // Base seat distance among ALIVE players, then Scope/Mustang adjustments.
+  dist(a, b) {
+    const alive = this.alivePlayers();
+    const ia = alive.findIndex(x => x.id === a.id);
+    const ib = alive.findIndex(x => x.id === b.id);
+    if (ia < 0 || ib < 0 || ia === ib) return 0;
+    const n = alive.length;
+    let d = Math.abs(ia - ib);
+    d = Math.min(d, n - d);
+    if (a.charId === 'rose') d -= 1;
+    if (this.hasCard(a, 'scope')) d -= 1;
+    if (b.charId === 'paul') d += 1;
+    if (this.hasCard(b, 'mustang')) d += 1;
+    return Math.max(1, d);
+  }
+
+  canShoot(a, b) { return this.dist(a, b) <= this.range(a); }
+
+  nextAliveSeat(seat) {
+    const n = this.players.length;
+    for (let i = 1; i <= n; i++) {
+      const s = (seat + i) % n;
+      if (this.players[s].alive) return s;
+    }
+    return seat;
+  }
+
+  // Alive players starting from (and including) the player after `p`, clockwise.
+  turnOrderFrom(p) {
+    const out = [];
+    let s = p.seat;
+    for (;;) {
+      s = this.nextAliveSeat(s);
+      if (s === p.seat) break; // wrapped all the way around
+      out.push(this.players[s]);
+    }
+    return out; // excludes p
+  }
+
+  /* ---------------- "draw!" checks ---------------- */
+
+  drawCheck(p, kind) {
+    // kind: 'barrel' (hearts), 'jail' (hearts), 'dynamite' (spades 2-9)
+    const match = c => {
+      if (!c) return false;
+      if (kind === 'dynamite') return c.suit === 'S' && RANKS.indexOf(c.rank) <= 7; // 2..9
+      return c.suit === 'H';
+    };
+    const preferSuccess = kind !== 'dynamite'; // with Dynamite you want it to fail
+    const flips = [];
+    if (p.charId === 'lucky') {
+      const a = this.flipCard();
+      const b = this.flipCard();
+      if (a) flips.push(a);
+      if (b) flips.push(b);
+      let chosen;
+      if (preferSuccess) {
+        chosen = match(a) ? a : (match(b) ? b : (a || b));
+      } else {
+        chosen = (!match(a) && a) ? a : ((!match(b) && b) ? b : (a || b));
+      }
+      this.addLog(`Lucky Duke flips ${flips.map(cardLabel).join(', ')} \u2192 ${chosen ? cardLabel(chosen) : 'nothing'}.`, 'draw');
+      return match(chosen);
+    }
+    const c = this.flipCard();
+    if (c) this.addLog(`${p.name} flips ${cardLabel(c)}.`, 'draw');
+    else this.addLog(`${p.name} flips \u2014 the deck is empty.`, 'draw');
+    return match(c);
+  }
+
+  barrelCheck(target) {
+    const hasBarrel = this.hasCard(target, 'barrel');
+    const jourdonnais = target.charId === 'jourdonnais';
+    if (!hasBarrel && !jourdonnais) return false;
+    if (jourdonnais) {
+      this.addLog(`${target.name} uses his Barrel (Jourdonnais).`, 'draw');
+      if (this.drawCheck(target, 'barrel')) {
+        this.addLog(`${target.name} is hidden behind the Barrel \u2014 missed!`, 'good');
+        return true;
+      }
+    }
+    if (hasBarrel) {
+      this.addLog(`${target.name} uses his Barrel.`, 'draw');
+      if (this.drawCheck(target, 'barrel')) {
+        this.addLog(`${target.name} is hidden behind the Barrel \u2014 missed!`, 'good');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* ---------------- damage / healing / elimination ---------------- */
+
+  heal(p, n) {
+    const before = p.hp;
+    p.hp = Math.min(p.maxHp, p.hp + n);
+    return p.hp - before;
+  }
+
+  damage(target, amount, source, cause, done) {
+    done = done || (() => {});
+    if (this.ended || !target.alive) { done(); return; }
+    for (let i = 0; i < amount; i++) {
+      if (!target.alive) break;
+      target.hp--;
+      this.addLog(`${target.name} loses 1 life (${target.hp <= 0 ? '0' : target.hp}).`, 'bad');
+      // Bart Cassidy: draw when losing a life point
+      if (target.charId === 'bart') this.drawCards(target, 1, 'draws (Bart Cassidy)');
+      // El Gringo: steal from the player who caused it
+      if (source && source.id !== target.id && source.alive && target.charId === 'elgringo' && source.hand.length) {
+        const i2 = Math.floor(Math.random() * source.hand.length);
+        const stolen = source.hand.splice(i2, 1)[0];
+        target.hand.push(stolen);
+        this.addLog(`El Gringo snatches a card from ${source.name}!`, 'char');
+        this.afterHand(source);
+      }
+    }
+    if (target.hp <= 0) {
+      this.pending = {
+        kind: 'dying',
+        player: target.id,
+        sourceId: source ? source.id : null,
+        cause,
+        prompt: `${target.name} is about to die!`,
+        next: () => {
+          if (this.ended) return;
+          done();
+        },
+      };
+    } else {
+      done();
+    }
+  }
+
+  eliminate(p, killer) {
+    p.alive = false;
+    p.hp = Math.max(0, p.hp);
+    this.addLog(`${p.name} is eliminated! (${ROLE_NAME[p.role]} \u2014 ${CHAR_BY_ID[p.charId].name})`, 'death');
+
+    // Vulture Sam takes everything
+    const vulture = this.alivePlayers().find(x => x !== p && x.charId === 'vulture');
+    if (vulture && (p.hand.length || p.play.length)) {
+      vulture.hand.push(...p.hand, ...p.play);
+      this.addLog(`Vulture Sam takes all of ${p.name}\u2019s cards.`, 'char');
+      this.afterHand(vulture);
+    } else if (p.hand.length || p.play.length) {
+      this.discard.push(...p.hand, ...p.play);
+    }
+    p.hand = [];
+    p.play = [];
+
+    // Rewards & penalties
+    if (p.role === 'outlaw' && killer && killer.alive && killer.id !== p.id) {
+      this.addLog(`${killer.name} eliminated an Outlaw \u2014 draws 3 cards!`, 'reward');
+      this.drawCards(killer, 3, 'draws the bounty');
+    }
+    if (killer && killer.alive && killer.role === 'sheriff' && p.role === 'deputy') {
+      this.addLog('The Sheriff killed a Deputy! He must discard all his cards.', 'penalty');
+      this.discard.push(...killer.hand, ...killer.play);
+      killer.hand = [];
+      killer.play = [];
+      this.afterHand(killer);
+    }
+    this.checkEnd();
+  }
+
+  checkEnd() {
+    if (this.ended) return;
+    const sheriff = this.players.find(p => p.role === 'sheriff');
+    if (!sheriff.alive) {
+      const alive = this.alivePlayers();
+      this.winners = (alive.length === 1 && alive[0].role === 'renegade') ? ['renegade'] : ['outlaw'];
+    } else if (!this.alivePlayers().some(p => p.role === 'outlaw' || p.role === 'renegade')) {
+      this.winners = ['sheriff'];
+    }
+    if (this.winners) {
+      this.ended = true;
+      this.phase = 'ended';
+      this.pending = null;
+      const txt = this.winners[0] === 'sheriff'
+        ? 'All Outlaws and the Renegade are dead \u2014 the Sheriff and his Deputies win!'
+        : this.winners[0] === 'renegade'
+          ? 'The Renegade is the last one standing \u2014 he becomes the new Sheriff!'
+          : 'The Sheriff is dead \u2014 the Outlaws win!';
+      this.addLog(`GAME OVER \u2014 ${txt}`, 'win');
+    }
+  }
+
+  /* ---------------- turn flow ---------------- */
+
+  resolvePending() {
+    const next = this.pending && this.pending.next;
+    this.pending = null;
+    if (next) next();
+  }
+
+  returnToPlay() {
+    if (this.ended) return;
+    if (this.pending) return;
+    const cur = this.current();
+    if (!cur || !cur.alive) { this.nextTurn(); return; }
+    this.phase = 'play';
+  }
+
+  nextTurn() {
+    if (this.ended) return;
+    this.turn = this.nextAliveSeat(this.turn);
+    this.beginTurn();
+  }
+
+  beginTurn() {
+    if (this.ended) return;
+    const p = this.current();
+    p.bangsUsed = 0;
+    this.phase = 'draw';
+    this.addLog(`\u2014 ${p.name}\u2019s turn \u2014`, 'turn');
+
+    // Dynamite is checked FIRST (official rule), then Jail.
+    const dyn = p.play.find(c => c.key === 'dynamite');
+    if (dyn) {
+      const explodes = this.drawCheck(p, 'dynamite');
+      if (explodes) {
+        p.play.splice(p.play.indexOf(dyn), 1);
+        this.discard.push(dyn);
+        this.addLog('BOOM! The Dynamite explodes!', 'death');
+        this.damage(p, 3, null, 'dynamite', () => this.afterDynamite(p));
+        return;
+      }
+      const nextP = this.players[this.nextAliveSeat(p.seat)];
+      p.play.splice(p.play.indexOf(dyn), 1);
+      nextP.play.push(dyn);
+      this.addLog(`${p.name} passes the Dynamite to ${nextP.name}.`);
+    }
+    this.afterDynamite(p);
+  }
+
+  afterDynamite(p) {
+    if (this.ended) return;
+    if (!p.alive) { this.nextTurn(); return; }
+
+    const jail = p.play.find(c => c.key === 'jail');
+    if (jail) {
+      const escaped = this.drawCheck(p, 'jail');
+      p.play.splice(p.play.indexOf(jail), 1);
+      this.discard.push(jail);
+      if (!escaped) {
+        this.addLog(`${p.name} stays in jail \u2014 he skips his turn!`, 'bad');
+        this.nextTurn();
+        return;
+      }
+      this.addLog(`${p.name} escapes from jail!`, 'good');
+    }
+    this.drawPhase(p);
+  }
+
+  drawPhase(p) {
+    switch (p.charId) {
+      case 'kit': {
+        const three = this.takeFromDeck(3);
+        if (three.length <= 2) {
+          p.hand.push(...three);
+          this.addLog(`Kit Carlson takes the last ${three.length} card(s).`);
+          this.afterHand(p);
+          this.startPlay();
+          return;
+        }
+        this.phase = 'draw';
+        this.pending = {
+          kind: 'kit',
+          player: p.id,
+          cards: three,
+          prompt: `${p.name} looks at the top 3 cards.`,
+          next: () => this.startPlay(),
+        };
+        return;
+      }
+      case 'jesse': {
+        const others = this.alivePlayers().filter(x => x.id !== p.id && x.hand.length > 0);
+        if (others.length === 0) {
+          this.drawCards(p, 2, 'draws');
+          this.startPlay();
+          return;
+        }
+        this.pending = {
+          kind: 'jesse',
+          player: p.id,
+          prompt: 'Draw your first card from the deck or from another player\u2019s hand.',
+          next: () => this.startPlay(),
+        };
+        return;
+      }
+      case 'pedro': {
+        if (this.discard.length === 0) {
+          this.drawCards(p, 2, 'draws');
+          this.startPlay();
+          return;
+        }
+        this.pending = {
+          kind: 'pedro',
+          player: p.id,
+          prompt: 'Draw your first card from the deck or from the discard pile.',
+          next: () => this.startPlay(),
+        };
+        return;
+      }
+      case 'blackjack': {
+        const c1 = this.takeFromDeck(1)[0];
+        const c2 = this.takeFromDeck(1)[0];
+        if (c1) p.hand.push(c1);
+        if (c2) {
+          p.hand.push(c2);
+          const red = c2.suit === 'H' || c2.suit === 'D';
+          this.addLog(`Black Jack reveals ${cardLabel(c2)} \u2014 ${red ? 'RED, he draws an extra card!' : 'black, no extra card.'}`, 'char');
+          if (red) {
+            const c3 = this.takeFromDeck(1)[0];
+            if (c3) { p.hand.push(c3); this.addLog(`Black Jack draws an extra card.`); }
+          }
+        }
+        this.afterHand(p);
+        this.startPlay();
+        return;
+      }
+      default:
+        this.drawCards(p, 2, 'draws');
+        this.startPlay();
+    }
+  }
+
+  startPlay() {
+    if (this.ended) return;
+    const p = this.current();
+    if (!p || !p.alive) { this.nextTurn(); return; }
+    this.phase = 'play';
+    p.bangsUsed = 0;
+  }
+
+  endPlay(p) {
+    const limit = Math.max(0, p.hp);
+    if (p.hand.length > limit) {
+      const need = p.hand.length - limit;
+      this.pending = {
+        kind: 'discard',
+        player: p.id,
+        need,
+        prompt: `Discard ${need} card${need > 1 ? 's' : ''}.`,
+        next: () => this.nextTurn(),
+      };
+      return;
+    }
+    this.nextTurn();
+  }
+
+  /* ---------------- response helpers ---------------- */
+
+  askMissed(target, source, next) {
+    if (this.ended) return;
+    let need = source.charId === 'slab' ? 2 : 1;
+    if (this.barrelCheck(target)) need--;
+    if (need <= 0) { next(); return; }
+    this.pending = {
+      kind: 'missed',
+      player: target.id,
+      sourceId: source.id,
+      need,
+      prompt: `${source.name} shoots ${target.name}!`,
+      next,
+    };
+  }
+
+  canRespondWith(p, card, kind) {
+    if (kind === 'missed') return card.key === 'missed' || (p.charId === 'calamity' && card.key === 'bang');
+    if (kind === 'indians' || kind === 'duel') return card.key === 'bang' || (p.charId === 'calamity' && card.key === 'missed');
+    if (kind === 'dying') return card.key === 'beer';
+    return false;
+  }
+
+  /* ---------------- public actions ---------------- */
+
+  action(pid, a) {
+    if (!a || typeof a !== 'object') return E('Bad action');
+    if (this.ended) return E('The game is over');
+    switch (a.t) {
+      case 'play': return this.actPlay(pid, a);
+      case 'end': return this.actEnd(pid);
+      case 'discard': return this.actDiscard(pid, a);
+      case 'respond': return this.actRespond(pid, a);
+      case 'choose': return this.actChoose(pid, a);
+      case 'sid': return this.actSid(pid, a);
+      case 'timeout': return this.actTimeout(pid);
+      default: return E('Unknown action');
+    }
+  }
+
+  actPlay(pid, a) {
+    if (this.pending) return E('Waiting for a response first');
+    if (this.phase !== 'play') return E('Not in your play phase');
+    const p = this.current();
+    if (!p || p.id !== pid) return E('Not your turn');
+    const card = p.hand.find(c => c.uid === a.uid);
+    if (!card) return E('Card not in your hand');
+
+    // Calamity Janet: a Missed! played with a target acts as Bang!
+    let key = card.key;
+    if (key === 'missed' && p.charId === 'calamity' && a.target) key = 'bang';
+
+    const target = a.target ? this.byId(a.target) : null;
+    const inHand = () => p.hand.splice(p.hand.indexOf(card), 1);
+    const toDiscard = () => this.discard.push(card);
+
+    switch (key) {
+      case 'bang': {
+        if (!target || !target.alive || target.id === p.id) return E('Invalid target');
+        if (!this.canShoot(p, target)) return E(`Out of range (distance ${this.dist(p, target)}, weapon range ${this.range(p)})`);
+        if (this.bangsLeft(p) <= 0) return E('You already played a Bang! this turn');
+        inHand(); toDiscard();
+        p.bangsUsed++;
+        this.addLog(`${p.name} plays Bang! \u2192 ${target.name}`, 'action');
+        this.afterHand(p);
+        this.askMissed(target, p, () => this.returnToPlay());
+        return OK();
+      }
+      case 'missed': {
+        if (p.charId !== 'calamity') return E('Missed! can only be played in response');
+        if (!target || !target.alive || target.id === p.id) return E('Invalid target');
+        if (!this.canShoot(p, target)) return E('Out of range');
+        if (this.bangsLeft(p) <= 0) return E('You already played a Bang! this turn');
+        inHand(); toDiscard();
+        p.bangsUsed++;
+        this.addLog(`${p.name} plays Missed! as Bang! \u2192 ${target.name}`, 'action');
+        this.afterHand(p);
+        this.askMissed(target, p, () => this.returnToPlay());
+        return OK();
+      }
+      case 'gatling': {
+        if (this.aliveCount() < 2) return E('No targets');
+        inHand(); toDiscard();
+        this.addLog(`${p.name} fires the Gatling!`, 'action');
+        this.afterHand(p);
+        const others = this.turnOrderFrom(p);
+        const step = i => {
+          if (this.ended) return;
+          if (i >= others.length) { this.returnToPlay(); return; }
+          this.askMissed(others[i], p, () => step(i + 1));
+        };
+        step(0);
+        return OK();
+      }
+      case 'indians': {
+        if (this.aliveCount() < 2) return E('No targets');
+        inHand(); toDiscard();
+        this.addLog(`${p.name} plays Indians! \u2014 everyone else must discard a Bang! or lose 1 life.`, 'action');
+        this.afterHand(p);
+        const others = this.turnOrderFrom(p);
+        const step = i => {
+          if (this.ended) return;
+          if (i >= others.length) { this.returnToPlay(); return; }
+          const t = others[i];
+          this.pending = {
+            kind: 'indians',
+            player: t.id,
+            sourceId: p.id,
+            prompt: 'Indians! Discard a Bang! or lose 1 life.',
+            next: () => step(i + 1),
+          };
+        };
+        step(0);
+        return OK();
+      }
+      case 'duel': {
+        if (!target || !target.alive || target.id === p.id) return E('Invalid target');
+        if (this.aliveCount() < 2) return E('No targets');
+        inHand(); toDiscard();
+        this.addLog(`${p.name} challenges ${target.name} to a Duel!`, 'action');
+        this.afterHand(p);
+        const round = (me, other) => {
+          if (this.ended) return;
+          this.pending = {
+            kind: 'duel',
+            player: me.id,
+            sourceId: other.id,
+            prompt: `Duel with ${other.name}: discard a Bang! or lose 1 life.`,
+            next: () => round(other, me),
+          };
+        };
+        round(target, p);
+        return OK();
+      }
+      case 'beer': {
+        if (this.aliveCount() <= 2) return E('Beer has no effect with only 2 players left');
+        if (p.hp >= p.maxHp) return E('Already at full health');
+        inHand(); toDiscard();
+        this.heal(p, 1);
+        this.addLog(`${p.name} drinks a Beer \u2192 +1 life (${p.hp}).`, 'good');
+        this.afterHand(p);
+        return OK();
+      }
+      case 'saloon': {
+        inHand(); toDiscard();
+        let healed = 0;
+        for (const x of this.alivePlayers()) healed += this.heal(x, 1);
+        this.addLog(`${p.name} opens the Saloon \u2014 everyone recovers 1 life${healed ? '' : ' (nobody could heal)'}.`, 'good');
+        this.afterHand(p);
+        return OK();
+      }
+      case 'stagecoach':
+      case 'wellsfargo': {
+        const n = key === 'stagecoach' ? 2 : 3;
+        inHand(); toDiscard();
+        this.drawCards(p, n, `plays ${CARD_DEFS[key].name} and draws ${n}`);
+        this.afterHand(p);
+        return OK();
+      }
+      case 'generalstore': {
+        if (this.aliveCount() < 2) return E('No targets');
+        inHand(); toDiscard();
+        this.afterHand(p);
+        const cards = this.takeFromDeck(this.aliveCount());
+        this.addLog(`${p.name} plays General Store \u2014 ${cards.length} cards are offered.`, 'action');
+        if (cards.length === 0) { this.returnToPlay(); return OK(); }
+        const queue = [p, ...this.turnOrderFrom(p)];
+        const step = () => {
+          if (this.ended) return;
+          if (queue.length === 0 || cards.length === 0) {
+            if (cards.length) this.discard.push(...cards.splice(0));
+            this.returnToPlay();
+            return;
+          }
+          const picker = queue.shift();
+          if (!picker.alive) { step(); return; }
+          this.pending = {
+            kind: 'generalStore',
+            player: picker.id,
+            cards,
+            prompt: `${picker.name} picks a card from the General Store.`,
+            next: step,
+          };
+        };
+        step();
+        return OK();
+      }
+      case 'panic': {
+        if (!target || !target.alive || target.id === p.id) return E('Invalid target');
+        if (this.dist(p, target) > 1) return E(`Target is at distance ${this.dist(p, target)} (must be 1)`);
+        if (a.pick === 'play') {
+          const c = target.play.find(x => x.uid === a.card);
+          if (!c) return E('That card is no longer in play');
+          target.play.splice(target.play.indexOf(c), 1);
+          p.hand.push(c);
+          this.addLog(`${p.name} uses Panic! and steals ${CARD_DEFS[c.key].name} from ${target.name}.`, 'action');
+        } else {
+          if (target.hand.length === 0) return E(`${target.name} has no cards in hand`);
+          const i = Math.floor(Math.random() * target.hand.length);
+          const c = target.hand.splice(i, 1)[0];
+          p.hand.push(c);
+          this.addLog(`${p.name} uses Panic! and steals a card from ${target.name}.`, 'action');
+          this.afterHand(target);
+        }
+        inHand(); toDiscard();
+        this.afterHand(p);
+        return OK();
+      }
+      case 'catbalou': {
+        if (!target || !target.alive) return E('Invalid target');
+        if (a.pick === 'play') {
+          const c = target.play.find(x => x.uid === a.card);
+          if (!c) return E('That card is no longer in play');
+          target.play.splice(target.play.indexOf(c), 1);
+          this.discard.push(c);
+          this.addLog(`${p.name} plays Cat Balou \u2014 discards ${target.name}\u2019s ${CARD_DEFS[c.key].name}.`, 'action');
+        } else {
+          if (target.hand.length === 0) return E(`${target.name} has no cards in hand`);
+          const i = Math.floor(Math.random() * target.hand.length);
+          const c = target.hand.splice(i, 1)[0];
+          this.discard.push(c);
+          this.addLog(`${p.name} plays Cat Balou \u2014 discards a card from ${target.name}\u2019s hand.`, 'action');
+          this.afterHand(target);
+        }
+        inHand(); toDiscard();
+        this.afterHand(p);
+        return OK();
+      }
+      case 'jail': {
+        if (!target || !target.alive || target.id === p.id) return E('Invalid target');
+        if (target.role === 'sheriff') return E('The Sheriff cannot be put in Jail');
+        if (this.hasCard(target, 'jail')) return E(`${target.name} is already in Jail`);
+        inHand();
+        target.play.push(card);
+        this.addLog(`${p.name} puts ${target.name} in Jail!`, 'action');
+        this.afterHand(p);
+        return OK();
+      }
+      case 'dynamite': {
+        if (this.hasCard(p, 'dynamite')) return E('Dynamite already in play');
+        inHand();
+        p.play.push(card);
+        this.addLog(`${p.name} places the Dynamite in front of him.`, 'action');
+        this.afterHand(p);
+        return OK();
+      }
+      case 'barrel':
+      case 'scope':
+      case 'mustang': {
+        if (this.hasCard(p, key)) return E(`You already have a ${CARD_DEFS[key].name} in play`);
+        inHand();
+        p.play.push(card);
+        this.addLog(`${p.name} plays ${CARD_DEFS[key].name}.`, 'action');
+        this.afterHand(p);
+        return OK();
+      }
+      case 'volcanic':
+      case 'schofield':
+      case 'remington':
+      case 'revcarabine':
+      case 'winchester': {
+        const old = this.weaponCard(p);
+        if (old) {
+          p.play.splice(p.play.indexOf(old), 1);
+          this.discard.push(old);
+        }
+        inHand();
+        p.play.push(card);
+        this.addLog(`${p.name} equips ${CARD_DEFS[key].name} (range ${CARD_DEFS[key].range}).`, 'action');
+        this.afterHand(p);
+        return OK();
+      }
+      default:
+        return E('Card cannot be played');
+    }
+  }
+
+  actEnd(pid) {
+    if (this.pending) return E('Waiting for a response first');
+    if (this.phase !== 'play') return E('Not in your play phase');
+    const p = this.current();
+    if (!p || p.id !== pid) return E('Not your turn');
+    this.endPlay(p);
+    return OK();
+  }
+
+  actDiscard(pid, a) {
+    if (!this.pending || this.pending.kind !== 'discard') return E('You don\u2019t need to discard');
+    if (this.pending.player !== pid) return E('Not your discard');
+    const p = this.byId(pid);
+    const card = p.hand.find(c => c.uid === a.uid);
+    if (!card) return E('Card not in your hand');
+    p.hand.splice(p.hand.indexOf(card), 1);
+    this.discard.push(card);
+    this.addLog(`${p.name} discards ${CARD_DEFS[card.key].name}.`);
+    this.pending.need--;
+    this.afterHand(p);
+    if (this.pending.need <= 0) this.resolvePending();
+    return OK();
+  }
+
+  actRespond(pid, a) {
+    const pend = this.pending;
+    if (!pend) return E('Nothing to respond to');
+    if (pend.player !== pid) return E('Not your turn to respond');
+    const p = this.byId(pid);
+
+    if (pend.kind === 'dying') {
+      if (a.pass) {
+        const src = pend.sourceId ? this.byId(pend.sourceId) : null;
+        this.addLog(`${p.name} cannot save himself \u2014 he is eliminated!`, 'death');
+        this.resolvePendingStart();
+        this.eliminate(p, src && src.alive && src.id !== p.id ? src : null);
+        if (!this.ended) this.finishPending();
+        return OK();
+      }
+      const card = p.hand.find(c => c.uid === a.uid);
+      if (!card) return E('Card not in your hand');
+      if (card.key !== 'beer') return E('Only Beer can save you now');
+      p.hand.splice(p.hand.indexOf(card), 1);
+      this.discard.push(card);
+      this.heal(p, 1);
+      this.addLog(`${p.name} drinks a Beer while dying \u2192 ${p.hp} life.`, 'good');
+      this.afterHand(p);
+      if (p.hp > 0) {
+        this.addLog(`${p.name} survives!`, 'good');
+        this.resolvePending();
+      }
+      return OK();
+    }
+
+    if (pend.kind === 'missed' || pend.kind === 'indians' || pend.kind === 'duel') {
+      if (a.pass) {
+        if (pend.kind === 'missed') {
+          const src = this.byId(pend.sourceId);
+          this.addLog(`${p.name} is hit!`, 'bad');
+          this.resolvePendingStart();
+          this.damage(p, 1, src, 'bang', () => this.finishPending());
+        } else if (pend.kind === 'indians') {
+          this.addLog(`${p.name} has no Bang! \u2014 he loses 1 life to the Indians!`, 'bad');
+          const src = this.byId(pend.sourceId);
+          this.resolvePendingStart();
+          this.damage(p, 1, src, 'indians', () => this.finishPending());
+        } else {
+          const src = this.byId(pend.sourceId);
+          this.addLog(`${p.name} backs down from the duel \u2014 he loses 1 life.`, 'bad');
+          // The duel is over: the first player who fails to discard a Bang! loses
+          // one life point, then play returns to the duelist who issued the challenge.
+          this.pending = null;
+          this._pendingNext = null;
+          this.damage(p, 1, src, 'duel', () => { if (!this.ended) this.returnToPlay(); });
+        }
+        return OK();
+      }
+      const card = p.hand.find(c => c.uid === a.uid);
+      if (!card) return E('Card not in your hand');
+      if (!this.canRespondWith(p, card, pend.kind)) return E('That card cannot be used here');
+      p.hand.splice(p.hand.indexOf(card), 1);
+      this.discard.push(card);
+      this.afterHand(p);
+      if (pend.kind === 'missed') {
+        this.addLog(`${p.name} plays ${CARD_DEFS[card.key].name} \u2014 the shot is dodged!`, 'good');
+        this.pending.need--;
+        if (this.pending.need <= 0) this.resolvePending();
+      } else if (pend.kind === 'indians') {
+        this.addLog(`${p.name} discards a Bang! to defend against the Indians.`, 'good');
+        this.resolvePending();
+      } else {
+        this.addLog(`${p.name} answers the duel with a Bang!`, 'good');
+        this.resolvePending();
+      }
+      return OK();
+    }
+    return E('You cannot respond now');
+  }
+
+  // Split helpers so the chain continues AFTER damage/dying resolution.
+  resolvePendingStart() {
+    const next = this.pending && this.pending.next;
+    this._pendingNext = next || null;
+    this.pending = null;
+  }
+  finishPending() {
+    if (this.ended) return;
+    const next = this._pendingNext;
+    this._pendingNext = null;
+    if (next) next();
+  }
+
+  actChoose(pid, a) {
+    const pend = this.pending;
+    if (!pend) return E('Nothing to choose');
+    if (pend.player !== pid) return E('Not your choice');
+    const p = this.byId(pid);
+
+    switch (pend.kind) {
+      case 'kit': {
+        const card = pend.cards.find(c => c.uid === a.uid);
+        if (!card) return E('Invalid card');
+        const keep = pend.cards.filter(c => c.uid !== card.uid);
+        p.hand.push(...keep);
+        this.deck.push(card); // back on top (deck is popped from the end)
+        this.addLog(`Kit Carlson keeps ${keep.length} cards and puts one back on top of the deck.`, 'char');
+        this.afterHand(p);
+        this.resolvePending();
+        return OK();
+      }
+      case 'jesse': {
+        if (a.source === 'deck' || !a.source) {
+          this.drawCards(p, 1, null);
+          this.addLog(`${p.name} draws his first card from the deck.`);
+        } else {
+          const other = this.byId(a.source);
+          if (!other || !other.alive || other.id === p.id) return E('Invalid player');
+          if (other.hand.length === 0) return E('That player has no cards');
+          const i = Math.floor(Math.random() * other.hand.length);
+          const c = other.hand.splice(i, 1)[0];
+          p.hand.push(c);
+          this.addLog(`${p.name} draws a card from ${other.name}\u2019s hand.`, 'char');
+          this.afterHand(other);
+          this.afterHand(p);
+        }
+        this.drawCards(p, 1, 'draws');
+        this.resolvePending();
+        return OK();
+      }
+      case 'pedro': {
+        if (a.source === 'discard') {
+          if (this.discard.length === 0) return E('The discard pile is empty');
+          const c = this.discard.pop();
+          p.hand.push(c);
+          this.addLog(`Pedro Ramirez takes ${CARD_DEFS[c.key].name} from the discard pile.`, 'char');
+        } else {
+          this.drawCards(p, 1, null);
+          this.addLog(`${p.name} draws his first card from the deck.`);
+        }
+        this.drawCards(p, 1, 'draws');
+        this.resolvePending();
+        return OK();
+      }
+      case 'generalStore': {
+        const i = pend.cards.findIndex(c => c.uid === a.uid);
+        if (i < 0) return E('Card not available');
+        const c = pend.cards.splice(i, 1)[0];
+        p.hand.push(c);
+        this.addLog(`${p.name} takes ${CARD_DEFS[c.key].name} from the General Store.`, 'action');
+        this.afterHand(p);
+        this.resolvePending();
+        return OK();
+      }
+      default:
+        return E('Nothing to choose');
+    }
+  }
+
+  actSid(pid, a) {
+    const pend = this.pending;
+    const p = this.byId(pid);
+    if (!p) return E('Unknown player');
+    if (p.charId !== 'sid') return E('Not available for this character');
+    const inDying = pend && pend.kind === 'dying' && pend.player === pid;
+    const inOwnTurn = !pend && this.phase === 'play' && this.current() && this.current().id === pid;
+    if (!inDying && !inOwnTurn) return E('You cannot use your ability now');
+
+    const cards = (a.cards || []).map(uid => p.hand.find(c => c.uid === uid)).filter(Boolean);
+    if (new Set(cards.map(c => c.uid)).size !== 2 || cards.length !== 2) return E('Choose exactly 2 cards');
+    if (p.hp >= p.maxHp && !inDying) return E('Already at full health');
+
+    for (const c of cards) {
+      p.hand.splice(p.hand.indexOf(c), 1);
+      this.discard.push(c);
+    }
+    this.heal(p, 1);
+    this.addLog(`${p.name} discards 2 cards to regain 1 life (${p.hp}).`, 'char');
+    this.afterHand(p);
+
+    if (inDying) {
+      if (p.hp > 0) {
+        this.addLog(`${p.name} survives!`, 'good');
+        this.resolvePending();
+      }
+      return OK();
+    }
+    return OK();
+  }
+
+  actTimeout(pid) {
+    const pend = this.pending;
+    if (pend && pend.player === pid) {
+      switch (pend.kind) {
+        case 'dying':
+          return this.actRespond(pid, { pass: true });
+        case 'missed':
+        case 'indians':
+        case 'duel':
+          return this.actRespond(pid, { pass: true });
+        case 'discard': {
+          // Discard the least valuable cards automatically.
+          const p = this.byId(pid);
+          let guard = 50;
+          while (this.pending === pend && pend.need > 0 && guard-- > 0) {
+            const sorted = [...p.hand].sort((x, y) => cardValue(x.key) - cardValue(y.key));
+            if (!sorted.length) break;
+            const r = this.actDiscard(pid, { uid: sorted[0].uid });
+            if (!r.ok) break;
+          }
+          if (this.pending === pend && pend.need > 0) {
+            // safety: force-resolve
+            pend.need = 0;
+            this.resolvePending();
+          }
+          return OK();
+        }
+        case 'kit': {
+          const worst = [...pend.cards].sort((x, y) => cardValue(x.key) - cardValue(y.key))[0];
+          return this.actChoose(pid, { uid: worst.uid });
+        }
+        case 'jesse': return this.actChoose(pid, { source: 'deck' });
+        case 'pedro': return this.actChoose(pid, { source: 'deck' });
+        case 'generalStore': {
+          const best = [...pend.cards].sort((x, y) => cardValue(y.key) - cardValue(x.key))[0];
+          return this.actChoose(pid, { uid: best.uid });
+        }
+      }
+      return E('Cannot resolve');
+    }
+    if (this.phase === 'play' && this.current() && this.current().id === pid) {
+      return this.actEnd(pid);
+    }
+    return E('Nothing to resolve');
+  }
+
+  /* ---------------- state for clients ---------------- */
+
+  legalFor(pid) {
+    if (this.ended) return { kind: null };
+    const p = this.byId(pid);
+    if (!p || !p.alive) return { kind: null };
+
+    if (this.pending) {
+      if (this.pending.player !== pid) return { kind: null, watching: this.pending.kind };
+      const pend = this.pending;
+      switch (pend.kind) {
+        case 'missed':
+        case 'indians':
+        case 'duel': {
+          const cards = p.hand.filter(c => this.canRespondWith(p, c, pend.kind))
+            .sort((x, y) => x.key.localeCompare(y.key));
+          return {
+            kind: pend.kind,
+            need: pend.kind === 'missed' ? pend.need : 1,
+            cards: cards.map(c => ({ uid: c.uid, key: c.key, name: CARD_DEFS[c.key].name })),
+            canPass: true,
+            prompt: pend.prompt,
+          };
+        }
+        case 'dying': {
+          const beers = p.hand.filter(c => c.key === 'beer').map(c => c.uid);
+          return {
+            kind: 'dying',
+            prompt: pend.prompt,
+            beers,
+            canSid: p.charId === 'sid' && p.hand.length >= 2,
+            canPass: true,
+          };
+        }
+        case 'discard': {
+          const sorted = [...p.hand].sort((x, y) => cardValue(x.key) - cardValue(y.key));
+          return {
+            kind: 'discard',
+            need: pend.need,
+            prompt: pend.prompt,
+            cards: sorted.map(c => ({ uid: c.uid, key: c.key, name: CARD_DEFS[c.key].name })),
+          };
+        }
+        case 'kit':
+          return { kind: 'kit', prompt: pend.prompt, cards: pend.cards.map(publicCard) };
+        case 'jesse': {
+          const others = this.alivePlayers().filter(x => x.id !== p.id && x.hand.length > 0)
+            .map(x => ({ id: x.id, name: x.name, handCount: x.hand.length }));
+          return { kind: 'jesse', prompt: pend.prompt, canDeck: true, players: others };
+        }
+        case 'pedro':
+          return {
+            kind: 'pedro',
+            prompt: pend.prompt,
+            canDeck: true,
+            discardTop: this.discard.length ? publicCard(this.discard[this.discard.length - 1]) : null,
+          };
+        case 'generalStore':
+          return {
+            kind: 'generalStore',
+            prompt: pend.prompt,
+            cards: pend.cards.map(publicCard),
+            yourPick: true,
+          };
+        default:
+          return { kind: null };
+      }
+    }
+
+    if (this.phase === 'play' && this.current() && this.current().id === pid) {
+      const playable = this.computePlayable(p);
+      const canHeal = p.charId === 'sid' && p.hand.length >= 2 && p.hp < p.maxHp;
+      return { kind: 'play', canEnd: true, playable, canHeal, bangsLeft: this.bangsLeft(p) };
+    }
+    return { kind: null };
+  }
+
+  computePlayable(p) {
+    const out = [];
+    const others = this.players.filter(x => x.alive && x.id !== p.id);
+    const add = (card, extra) => out.push(Object.assign({
+      uid: card.uid, key: card.key, name: CARD_DEFS[card.key].name,
+      icon: CARD_DEFS[card.key].icon, cat: CARD_DEFS[card.key].cat,
+      targets: [], needsPick: false,
+    }, extra));
+
+    for (const card of p.hand) {
+      const key = card.key;
+      switch (key) {
+        case 'bang':
+          if (this.bangsLeft(p) > 0) {
+            const tg = others.filter(x => this.canShoot(p, x)).map(x => x.id);
+            if (tg.length) add(card, { targets: tg, hint: 'Choose a target within your weapon range' });
+          }
+          break;
+        case 'missed':
+          if (p.charId === 'calamity' && this.bangsLeft(p) > 0) {
+            const tg = others.filter(x => this.canShoot(p, x)).map(x => x.id);
+            if (tg.length) add(card, { targets: tg, as: 'bang', hint: 'Janet: use as Bang!' });
+          }
+          break;
+        case 'gatling':
+          if (others.length) add(card, { hint: 'Shoots EVERY other player' });
+          break;
+        case 'indians':
+          if (others.length) add(card, { hint: 'Everyone else: Bang! or lose 1 life' });
+          break;
+        case 'duel': {
+          const tg = others.map(x => x.id);
+          if (tg.length) add(card, { targets: tg, hint: 'Choose who to duel (any distance)' });
+          break;
+        }
+        case 'beer': {
+          // Beer has no effect with 2 players left, or at full health —
+          // don't offer it as playable in those cases.
+          if (this.aliveCount() > 2 && p.hp < p.maxHp) add(card, { hint: '+1 life' });
+          break;
+        }
+        case 'saloon':
+        case 'stagecoach':
+        case 'wellsfargo':
+        case 'generalstore':
+        case 'dynamite':
+          add(card, {});
+          break;
+        case 'barrel':
+        case 'scope':
+        case 'mustang':
+          if (!this.hasCard(p, key)) add(card, { hint: 'Equip in front of you' });
+          break;
+        case 'volcanic':
+        case 'schofield':
+        case 'remington':
+        case 'revcarabine':
+        case 'winchester':
+          add(card, { hint: `Weapon \u2014 range ${CARD_DEFS[key].range}` });
+          break;
+        case 'jail': {
+          const tg = others.filter(x => x.role !== 'sheriff' && !this.hasCard(x, 'jail')).map(x => x.id);
+          if (tg.length) add(card, { targets: tg, hint: 'Choose who to jail (not the Sheriff)' });
+          break;
+        }
+        case 'panic': {
+          const tg = others.filter(x => this.dist(p, x) === 1 && (x.hand.length || x.play.length)).map(x => x.id);
+          if (tg.length) add(card, { targets: tg, needsPick: true, hint: 'Steal from a player at distance 1' });
+          break;
+        }
+        case 'catbalou': {
+          const tg = this.players.filter(x => x.alive &&
+            (x.id !== p.id ? (x.hand.length || x.play.length) : x.play.length > 0)).map(x => x.id);
+          if (tg.length) add(card, { targets: tg, needsPick: true, hint: 'Force any player to discard a card' });
+          break;
+        }
+      }
+    }
+    // Calamity Janet: Bang! usable as Missed! is only relevant in responses (handled there).
+    return out;
+  }
+
+  stateFor(pid) {
+    const me = this.byId(pid);
+    const revealAll = this.ended;
+    return {
+      phase: this.phase,
+      turn: this.currentId(),
+      turnName: this.current() ? this.current().name : null,
+      ended: this.ended,
+      winners: this.winners,
+      players: this.players.map(p => {
+        const revealed = revealAll || !p.alive || p.role === 'sheriff';
+        return {
+          id: p.id,
+          seat: p.seat,
+          name: p.name,
+          charId: p.charId,
+          charName: CHAR_BY_ID[p.charId].name,
+          charText: CHAR_BY_ID[p.charId].text,
+          charHp: CHAR_BY_ID[p.charId].hp,
+          role: revealed ? p.role : null,
+          roleKnown: revealed,
+          isSheriff: p.role === 'sheriff',
+          hp: p.hp,
+          maxHp: p.maxHp,
+          alive: p.alive,
+          handCount: p.hand.length,
+          play: p.play.map(publicCard),
+          auto: p.auto,
+        };
+      }),
+      me: me ? {
+        id: me.id,
+        seat: me.seat,
+        name: me.name,
+        role: me.role,
+        roleName: ROLE_NAME[me.role],
+        charId: me.charId,
+        charName: CHAR_BY_ID[me.charId].name,
+        charText: CHAR_BY_ID[me.charId].text,
+        hp: me.hp,
+        maxHp: me.maxHp,
+        alive: me.alive,
+        hand: me.hand.map(publicCard),
+        bangsLeft: this.bangsLeft(me),
+        handLimit: Math.max(0, me.hp),
+      } : null,
+      deckCount: this.deck.length,
+      discardCount: this.discard.length,
+      discardTop: this.discard.length ? publicCard(this.discard[this.discard.length - 1]) : null,
+      pending: this.pending ? {
+        kind: this.pending.kind,
+        player: this.pending.player,
+        prompt: this.pending.prompt || '',
+        need: this.pending.need || 0,
+        source: this.pending.sourceId || null,
+        cards: (this.pending.kind === 'generalStore') ? this.pending.cards.map(publicCard) : undefined,
+      } : null,
+      legal: this.legalFor(pid),
+      log: this.log.slice(-50),
+    };
+  }
+}
+
+/* ---------------- misc utilities ---------------- */
+
+function publicCard(c) {
+  return { uid: c.uid, key: c.key, rank: c.rank, suit: c.suit, name: CARD_DEFS[c.key].name, icon: CARD_DEFS[c.key].icon, cat: CARD_DEFS[c.key].cat };
+}
+
+// Rough keep-value used by bots and timeout auto-discards.
+function cardValue(key) {
+  const v = {
+    beer: 9, missed: 8, bang: 7, barrel: 7, gatling: 6, indians: 5, jail: 5,
+    duel: 5, catbalou: 5, saloon: 5, scope: 5, mustang: 5, panic: 4,
+    stagecoach: 4, wellsfargo: 4, generalstore: 4, dynamite: 3,
+    volcanic: 5, schofield: 5, remington: 6, revcarabine: 6, winchester: 7,
+  };
+  return v[key] !== undefined ? v[key] : 4;
+}
+
+function buildDeck() {
+  const cards = [];
+  let n = 0;
+  for (const [key, def] of Object.entries(CARD_DEFS)) {
+    for (let i = 0; i < def.count; i++) {
+      cards.push({ uid: `${key}#${n++}`, key, rank: '2', suit: 'S' });
+    }
+  }
+  // Spread suits/ranks for "draw!" checks: 80 cards -> 20 of each suit.
+  cards.forEach((c, i) => {
+    c.suit = SUITS[i % 4];
+    c.rank = RANKS[Math.floor(i / 4) % 13];
+  });
+  return shuffle(cards);
+}
+
+module.exports = {
+  Game,
+  CARD_DEFS,
+  CHARACTERS,
+  CHAR_BY_ID,
+  ROLE_NAME,
+  RANKS,
+  SUITS,
+  SUIT_SYMBOL,
+  SUIT_NAME,
+  cardLabel,
+  cardValue,
+  rolesFor,
+  buildDeck,
+};
+
+  })(module, module.exports);
+  return module.exports;
+})();
+
+/* ---------- bot AI (bang/bots.js) ---------- */
+const __bots = (function () {
+  const module = { exports: {} };
+  (function (module, exports, require) {
+'use strict';
+/* ========================================================================= *
+ * BANG! — bot AI
+ *
+ * botAction(game, pid) returns one action object for whatever the given
+ * player owes right now (response, choice, discard, or a single step of
+ * their play phase). Difficulty affects target choice and how eagerly
+ * bots spend defensive cards.
+ *
+ * Simplification (documented in README): pro bots know all roles,
+ * amateur bots know roles 60% of the time, beginner bots only know the
+ * public role (Sheriff).
+ * ========================================================================= */
+
+const { CARD_DEFS, cardValue } = require('./game');
+
+const DIFFS = ['beginner', 'amateur', 'pro'];
+
+function rnd(n) { return Math.floor(Math.random() * n); }
+function pick(arr) { return arr[rnd(arr.length)]; }
+
+function knownRole(game, me, other, diff) {
+  if (other.role === 'sheriff') return 'sheriff'; // public
+  if (diff === 'pro') return other.role;
+  if (diff === 'amateur') return Math.random() < 0.6 ? other.role : 'unknown';
+  return 'unknown';
+}
+
+function isFriend(game, me, other, diff) {
+  const r = knownRole(game, me, other, diff);
+  if (r === 'unknown') return false;
+  if (me.role === 'sheriff' || me.role === 'deputy') return r === 'sheriff' || r === 'deputy';
+  if (me.role === 'outlaw') return r === 'outlaw';
+  return false; // renegade has no friends
+}
+
+// Higher = better target to attack.
+function scoreTarget(game, me, t, diff) {
+  if (!t.alive || t.id === me.id) return -1e9;
+  const r = knownRole(game, me, t, diff);
+  let s = 0;
+  if (me.role === 'outlaw') {
+    s = t.role === 'sheriff' ? 100 : (r === 'deputy' ? -30 : (r === 'outlaw' ? -800 : 40));
+    if (r === 'unknown') s = 40;
+  } else if (me.role === 'sheriff' || me.role === 'deputy') {
+    s = r === 'outlaw' ? 100 : (r === 'renegade' ? 60 : (r === 'deputy' || r === 'sheriff' ? -800 : 45));
+  } else { // renegade: weaken everyone, but never finish the Sheriff early
+    const aliveN = game.aliveCount();
+    if (t.role === 'sheriff') {
+      if (aliveN <= 2) s = 100;
+      else s = (t.hp <= 2) ? -1000 : -40; // avoid delivering the killing blow
+    } else {
+      s = 55;
+      if (r === 'unknown') s = 55;
+    }
+  }
+  if (r === 'unknown' && t.role !== 'sheriff') s = Math.max(s, 30);
+  s += (t.maxHp - t.hp) * 2;      // prefer wounded / easy kills
+  s -= game.dist(me, t) * 3;      // prefer closer targets
+  s += Math.random() * 5;
+  return s;
+}
+
+function bestTarget(game, me, candidates, diff) {
+  let best = null, bs = -1e9;
+  for (const t of candidates) {
+    const s = scoreTarget(game, me, t, diff);
+    if (s > bs) { bs = s; best = t; }
+  }
+  return best;
+}
+
+function enemiesOf(game, me, diff) {
+  return game.players.filter(x => x.alive && x.id !== me.id && !isFriend(game, me, x, diff));
+}
+
+function weaponBestInHand(p) {
+  let best = null, r = 0;
+  for (const c of p.hand) {
+    const def = CARD_DEFS[c.key];
+    if (def.cat === 'weapon' && def.range > r) { r = def.range; best = c; }
+  }
+  return best;
+}
+
+function botPlayStep(game, p, diff) {
+  const legal = game.legalFor(p.id);
+  const playable = legal.playable || [];
+  const find = key => playable.find(e => e.key === key);
+  const enemies = enemiesOf(game, p, diff);
+  const hurt = p.hp < p.maxHp;
+
+  // 1. Heal when hurt (never waste Beer on 2 players, where it does nothing).
+  if (hurt && game.aliveCount() > 2 && diff !== 'beginner') {
+    const beer = find('beer');
+    if (beer && (p.hp <= 2 || diff === 'pro' || Math.random() < 0.5)) return { t: 'play', uid: beer.uid };
+  }
+
+  // 2. Upgrade weapon.
+  const curRange = game.range(p);
+  const w = weaponBestInHand(p);
+  if (w && CARD_DEFS[w.key].range > curRange && Math.random() < 0.9) {
+    const entry = playable.find(e => e.uid === w.uid);
+    if (entry) return { t: 'play', uid: w.uid };
+  }
+
+  // 3. Passive blue cards.
+  for (const key of ['barrel', 'scope', 'mustang']) {
+    const e = find(key);
+    if (e && Math.random() < 0.9) return { t: 'play', uid: e.uid };
+  }
+
+  // 4. Saloon if someone hurt (and >2 alive).
+  if (game.aliveCount() > 2) {
+    const saloon = find('saloon');
+    if (saloon && game.alivePlayers().some(x => x.hp < x.maxHp) && Math.random() < 0.7) {
+      return { t: 'play', uid: saloon.uid };
+    }
+  }
+
+  // 5. Card draw effects when low on cards.
+  if (p.hand.length <= 3) {
+    for (const key of ['wellsfargo', 'stagecoach', 'generalstore']) {
+      const e = find(key);
+      if (e) return { t: 'play', uid: e.uid };
+    }
+  }
+
+  // 6. Free my own Jail with Cat Balou (self-target, pick the Jail card).
+  const selfJail = playable.find(e => e.key === 'catbalou' && e.targets.includes(p.id));
+  if (selfJail && game.hasCard(p, 'jail')) {
+    const jailCard = p.play.find(c => c.key === 'jail');
+    if (jailCard) return { t: 'play', uid: selfJail.uid, target: p.id, pick: 'play', card: jailCard.uid };
+  }
+
+  // 7. Jail an enemy (not the Sheriff).
+  const jail = find('jail');
+  if (jail && jail.targets.length) {
+    const cand = jail.targets.map(id => game.byId(id)).filter(x => x.role !== 'sheriff');
+    const target = bestTarget(game, p, cand, diff);
+    if (target && Math.random() < 0.75) return { t: 'play', uid: jail.uid, target: target.id };
+  }
+
+  // 8. Dynamite: drop it (keeps the table interesting).
+  const dyn = find('dynamite');
+  if (dyn && !game.hasCard(p, 'dynamite') && Math.random() < 0.8) return { t: 'play', uid: dyn.uid };
+
+  // 9. Shoot Bang! at the best in-range target.
+  const bang = find('bang');
+  if (bang && bang.targets.length) {
+    const cands = bang.targets.map(id => game.byId(id));
+    const target = bestTarget(game, p, cands, diff);
+    if (target && scoreTarget(game, p, target, diff) > 0) return { t: 'play', uid: bang.uid, target: target.id };
+  }
+  // Janet using Missed! as Bang!
+  const janet = find('missed');
+  if (janet && janet.targets.length && p.charId === 'calamity') {
+    const cands = janet.targets.map(id => game.byId(id));
+    const target = bestTarget(game, p, cands, diff);
+    if (target && scoreTarget(game, p, target, diff) > 0) return { t: 'play', uid: janet.uid, target: target.id };
+  }
+
+  // 10. Gatling if it hits enough people.
+  const gat = find('gatling');
+  if (gat && game.aliveCount() - 1 >= 2 && Math.random() < 0.8) return { t: 'play', uid: gat.uid };
+
+  // 11. Indians when it hurts others more than me (I hold Bang!s to defend).
+  const ind = find('indians');
+  if (ind && game.aliveCount() - 1 >= 2) {
+    const myBangs = p.hand.filter(c => c.key === 'bang').length;
+    if (myBangs >= 1 || diff === 'beginner') return { t: 'play', uid: ind.uid };
+  }
+
+  // 12. Duel a wounded enemy when I hold spare Bang!s.
+  const duel = find('duel');
+  if (duel && duel.targets.length) {
+    const myBangs = p.hand.filter(c => c.key === 'bang').length;
+    if (myBangs >= 2 && diff !== 'beginner') {
+      const cands = duel.targets.map(id => game.byId(id));
+      const target = bestTarget(game, p, cands, diff);
+      if (target && target.hp <= 2 && scoreTarget(game, p, target, diff) > 0) {
+        return { t: 'play', uid: duel.uid, target: target.id };
+      }
+    }
+  }
+
+  // 13. Strip a threatening Barrel from someone we want to shoot.
+  const cb = find('catbalou');
+  if (cb && cb.targets.length && (bang || gat)) {
+    const withBarrel = cb.targets.map(id => game.byId(id))
+      .filter(x => x.id !== p.id && game.hasCard(x, 'barrel'));
+    if (withBarrel.length && Math.random() < 0.6) {
+      const t = withBarrel[0];
+      const barrelCard = t.play.find(c => c.key === 'barrel');
+      return { t: 'play', uid: cb.uid, target: t.id, pick: 'play', card: barrelCard.uid };
+    }
+  }
+
+  // 14. Panic: grab a card if I'm running low.
+  const panic = find('panic');
+  if (panic && panic.targets.length && p.hand.length <= 4 && Math.random() < 0.6) {
+    const cands = panic.targets.map(id => game.byId(id)).filter(x => x.hand.length > 0 || x.play.length);
+    const target = pick(cands);
+    if (target) {
+      const inPlay = target.play[0];
+      if (inPlay && (!target.hand.length || Math.random() < 0.5)) {
+        return { t: 'play', uid: panic.uid, target: target.id, pick: 'play', card: inPlay.uid };
+      }
+      return { t: 'play', uid: panic.uid, target: target.id, pick: 'hand' };
+    }
+  }
+
+  // 15. Cat Balou a strong enemy's blue card.
+  if (cb && cb.targets.length && diff !== 'beginner' && Math.random() < 0.4) {
+    const cands = cb.targets.map(id => game.byId(id)).filter(x => x.id !== p.id && x.play.length);
+    const target = bestTarget(game, p, cands, diff);
+    if (target) {
+      const card = target.play.find(c => c.key !== 'jail') || target.play[0];
+      if (card && !(card.key === 'jail' && target.id === p.id)) {
+        return { t: 'play', uid: cb.uid, target: target.id, pick: 'play', card: card.uid };
+      }
+    }
+  }
+
+  return { t: 'end' };
+}
+
+function botRespond(game, p, legal, diff) {
+  switch (legal.kind) {
+    case 'missed': {
+      if (!legal.cards.length) return { t: 'respond', pass: true };
+      const desperate = p.hp <= 2;
+      const willing = diff === 'pro' || desperate || Math.random() < 0.6;
+      if (willing) return { t: 'respond', uid: legal.cards[0].uid };
+      return { t: 'respond', pass: true };
+    }
+    case 'indians': {
+      if (!legal.cards.length) return { t: 'respond', pass: true };
+      const willing = diff === 'pro' || p.hp <= 2 || Math.random() < 0.7;
+      return willing ? { t: 'respond', uid: legal.cards[0].uid } : { t: 'respond', pass: true };
+    }
+    case 'duel': {
+      if (!legal.cards.length) return { t: 'respond', pass: true };
+      const bangs = p.hand.filter(c => c.key === 'bang').length;
+      const willing = p.hp <= 1 || (diff !== 'beginner' && bangs >= 2);
+      return willing ? { t: 'respond', uid: legal.cards[0].uid } : { t: 'respond', pass: true };
+    }
+    case 'dying': {
+      if (legal.beers.length) return { t: 'respond', uid: legal.beers[0] };
+      if (legal.canSid) return { t: 'sid', cards: [...p.hand].sort((a, b) => cardValue(a.key) - cardValue(b.key)).slice(0, 2).map(c => c.uid) };
+      return { t: 'respond', pass: true };
+    }
+    case 'discard': {
+      const sorted = [...p.hand].sort((a, b) => cardValue(a.key) - cardValue(b.key));
+      return { t: 'discard', uid: sorted[0].uid };
+    }
+    case 'kit': {
+      // Keep the 2 best, put the worst back.
+      const sorted = [...legal.cards].sort((a, b) => cardValue(b.key) - cardValue(a.key));
+      return { t: 'choose', uid: sorted[sorted.length - 1].uid };
+    }
+    case 'jesse': {
+      if (diff === 'pro' && legal.players.length) {
+        const richest = [...legal.players].sort((a, b) => b.handCount - a.handCount)[0];
+        if (richest.handCount >= 3) return { t: 'choose', source: richest.id };
+      }
+      return { t: 'choose', source: 'deck' };
+    }
+    case 'pedro': {
+      if (legal.discardTop) {
+        const keep = cardValue(legal.discardTop.key) >= 5;
+        if (keep || diff === 'beginner') return { t: 'choose', source: 'discard' };
+      }
+      return { t: 'choose', source: 'deck' };
+    }
+    case 'generalStore': {
+      const sorted = [...legal.cards].sort((a, b) => cardValue(b.key) - cardValue(a.key));
+      // Slight preference for Beer when hurt.
+      if (p.hp < p.maxHp) {
+        const beer = sorted.find(c => c.key === 'beer');
+        if (beer) return { t: 'choose', uid: beer.uid };
+      }
+      return { t: 'choose', uid: sorted[0].uid };
+    }
+    default:
+      return { t: 'timeout' };
+  }
+}
+
+function botAction(game, pid, difficulty) {
+  const diff = DIFFS.includes(difficulty) ? difficulty : 'amateur';
+  const p = game.byId(pid);
+  if (!p) return { t: 'timeout' };
+  const legal = game.legalFor(pid);
+
+  if (legal.kind && legal.kind !== 'play') return botRespond(game, p, legal, diff);
+  if (legal.kind === 'play') {
+    const step = botPlayStep(game, p, diff);
+    return step;
+  }
+  // Nothing expected — let the engine resolve defaults.
+  return { t: 'timeout' };
+}
+
+module.exports = { botAction, DIFFS };
+
+  })(module, module.exports, name => __engine);
+  return module.exports;
+})();
+
+const Game = __engine.Game;
+const botAction = __bots.botAction;
+
+/* ============================================================
+ * LocalGameSocket — the BANG! server, emulated inside the browser.
+ * One local table: you vs bots. Bot turns are driven by timers,
+ * personalized states are pushed to the same client renderer.
+ * ============================================================ */
+class LocalGameSocket {
+  constructor() {
+    this._handlers = {};
+    this._timer = null;
+    this.connected = true;
+    this.game = null;
+    this.players = [];
+    this.myId = 'you';
+    this.hostId = 'you';
+    this.code = '';
+  }
+
+  on(event, fn) { (this._handlers[event] = this._handlers[event] || []).push(fn); }
+  _fire(event, arg) { (this._handlers[event] || []).forEach(fn => fn(arg)); }
+  _toast(msg) { this._fire('toast', msg); }
+
+  emit(event, payload, cb) {
+    switch (event) {
+      case 'createRoom': return this._create(payload, cb);
+      case 'joinRoom': if (cb) cb({ error: 'This is the offline edition \u2014 one table, you vs bots.' }); return;
+      case 'fillBots': return this._fillBots(payload, cb);
+      case 'startGame': return this._start(cb);
+      case 'playAgain': return this._again(cb);
+      case 'action': return this._action(payload);
+    }
+  }
+
+  _create({ name }, cb) {
+    const clean = String(name || '').trim().slice(0, 16) || 'Player';
+    this.code = Math.random().toString(36).slice(2, 6).toUpperCase();
+    this.players = [{ id: 'you', name: clean, bot: false, difficulty: null }];
+    this.hostId = 'you';
+    this._fillBots({ count: 4, difficulty: 'amateur' }, null); // seat bots right away
+    if (cb) cb({ code: this.code });
+    this._push();
+  }
+
+  _fillBots({ count, difficulty }, cb) {
+    if (this.game) { if (cb) cb({ error: 'The game is already running' }); return; }
+    const target = Math.max(4, Math.min(7, parseInt(count, 10) || 4));
+    const diff = ['beginner', 'amateur', 'pro'].includes(difficulty) ? difficulty : 'amateur';
+    for (const p of this.players) if (p.bot) p.difficulty = diff;
+    while (this.players.filter(p => p.bot).length > target - this.players.filter(p => !p.bot).length) {
+      const idx = this.players.map(p => p.bot).lastIndexOf(true);
+      if (idx < 0) break;
+      this.players.splice(idx, 1);
+    }
+    let n = this.players.filter(p => p.bot).length;
+    while (this.players.length < target) {
+      n++;
+      this.players.push({ id: 'b' + n, name: 'Bot ' + n, bot: true, difficulty: diff });
+    }
+    if (cb) cb({ ok: true });
+    this._push();
+  }
+
+  _start(cb) {
+    if (this.game) { if (cb) cb({ error: 'The game is already running' }); return; }
+    if (this.players.length < 4) { if (cb) cb({ error: 'Need at least 4 players (add bots)' }); return; }
+    this.game = new Game(this.players.map(p => ({ id: p.id, name: p.name, bot: p.bot })));
+    this.game.start();
+    if (cb) cb({ ok: true });
+    this._push();
+    this._drive();
+  }
+
+  _again(cb) {
+    this.game = null;
+    if (cb) cb({ ok: true });
+    this._push();
+  }
+
+  _action(a) {
+    if (!this.game) return;
+    const res = this.game.action(this.myId, a);
+    if (res && !res.ok) this._toast(res.error);
+    this._push();
+    this._drive();
+  }
+
+  _push() {
+    let s;
+    if (!this.game) {
+      s = {
+        view: 'lobby',
+        roomCode: this.code,
+        you: this.myId,
+        host: this.hostId === this.myId,
+        players: this.players.map(p => ({ id: p.id, name: p.name, bot: p.bot, host: p.id === this.hostId })),
+        minPlayers: 4,
+        maxPlayers: 7,
+      };
+    } else {
+      s = this.game.stateFor(this.myId);
+      s.view = 'game';
+      s.roomCode = this.code;
+      s.you = this.myId;
+      s.host = this.hostId === this.myId;
+      s.deadline = 0;        // relaxed solo play: no timers
+      s.deadlineKind = null;
+    }
+    this._fire('state', s);
+  }
+
+  _drive() {
+    if (!this.game || this.game.ended || this._timer) return;
+    const waiter = this.game.pending ? this.game.pending.player
+      : (this.game.phase === 'play' ? this.game.currentId() : null);
+    if (!waiter || waiter === this.myId) return;
+    const pl = this.players.find(p => p.id === waiter);
+    if (!pl || !pl.bot) return;
+    this._timer = setTimeout(() => {
+      this._timer = null;
+      if (!this.game || this.game.ended) return;
+      const action = botAction(this.game, waiter, pl.difficulty || 'amateur');
+      const res = this.game.action(waiter, action);
+      if (res && !res.ok) this.game.action(waiter, { t: 'timeout' }); // never stall
+      this._push();
+      this._drive();
+    }, 600 + Math.random() * 900);
+  }
+}
+
+  </script>
+  <script>
+/* ========================================================================= *
+ * BANG! — browser client (vanilla JS)
+ *
+ * Receives a personalized `state` from the server, renders the table,
+ * and sends back `action` events. The server never sends other players'
+ * hands or hidden roles, so there is nothing to cheat with in devtools.
+ * ========================================================================= */
+
+const socket = new LocalGameSocket();
+
+let S = null;            // latest state from server
+let mode = null;         // 'play' | 'discard' | 'sid' | null
+let sel = new Set();     // selected hand card uids
+let aiming = null;       // {uid, entry} — waiting for a target click
+let pick = null;         // {uid, targetId, name, opts} — waiting for card pick
+let lastRoom = null;     // room code we last rendered (lobby defaults)
+let toastTimer = null;
+
+const ICONS = {
+  bang: '🔫', missed: '💨', beer: '🍺', catbalou: '💥', panic: '🫳',
+  duel: '⚔️', indians: '🪶', gatling: '🔥', generalstore: '🎁', saloon: '🥃',
+  stagecoach: '🏜️', wellsfargo: '🚂', barrel: '🛢️', jail: '⛓️', dynamite: '💣',
+  scope: '🔭', mustang: '🐴', volcanic: '🔫', schofield: '🔫', remington: '🔫',
+  revcarabine: '🔫', winchester: '🔫',
+};
+const SUIT_SYM = { S: '♠', H: '♥', D: '♦', C: '♣' };
+const ROLE_LABEL = { sheriff: 'Sheriff', deputy: 'Deputy', outlaw: 'Outlaw', renegade: 'Renegade' };
+const $ = id => document.getElementById(id);
+
+/* ---------------- socket ---------------- */
+
+socket.on('state', s => {
+  S = s;
+  // Fresh state = fresh interaction: drop local selections.
+  sel = new Set();
+  aiming = null;
+  pick = null;
+  mode = s.view === 'game' && s.legal ? (
+    s.legal.kind === 'play' ? 'play' : (s.legal.kind === 'discard' ? 'discard' : null)
+  ) : null;
+  render();
+});
+socket.on('toast', msg => showToast(msg));
+
+/* ---------------- helpers ---------------- */
+
+function act(a) { socket.emit('action', a); }
+function me() { return S && S.me; }
+function playerById(id) { return (S.players || []).find(p => p.id === id); }
+function myName() { const m = me(); return m ? m.name : ''; }
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+function suitClass(c) { return (c.suit === 'H' || c.suit === 'D') ? 'red' : ''; }
+
+function cardEl(c, cls) {
+  const d = document.createElement('div');
+  d.className = `card ${c.cat || ''} ${cls || ''}`;
+  d.dataset.uid = c.uid;
+  const s = SUIT_SYM[c.suit] || '';
+  d.innerHTML = `
+    <div class="corner ${suitClass(c)}"><span>${c.rank}</span><span class="suit ${suitClass(c)}">${s}</span></div>
+    <div class="face">
+      <span class="icon">${c.icon || ICONS[c.key] || ''}</span>
+      <span class="cname">${c.name}</span>
+    </div>
+    <div class="corner br ${suitClass(c)}"><span>${c.rank}</span><span class="suit ${suitClass(c)}">${s}</span></div>`;
+  return d;
+}
+
+function hpEl(p) {
+  const d = document.createElement('div');
+  d.className = 'hp';
+  for (let i = 0; i < p.maxHp; i++) {
+    const i2 = document.createElement('i');
+    if (i >= p.hp) i2.className = 'empty';
+    d.appendChild(i2);
+  }
+  return d;
+}
+
+function roleBadge(role, hidden) {
+  const s = document.createElement('span');
+  if (hidden || !role) { s.className = 'role unknown'; s.textContent = '?'; s.title = 'Role unknown'; }
+  else { s.className = `role ${role}`; s.textContent = ROLE_LABEL[role]; }
+  return s;
+}
+
+/* ---------------- views ---------------- */
+
+function show(view) {
+  $('login').hidden = view !== 'login';
+  $('lobby').hidden = view !== 'lobby';
+  $('game').hidden = view !== 'game';
+}
+
+function render() {
+  if (!S) return;
+  if (S.view === 'lobby') { show('lobby'); renderLobby(); }
+  else if (S.view === 'game') { show('game'); renderGame(); }
+}
+
+/* ---------------- lobby ---------------- */
+
+function renderLobby() {
+  $('roomCode').textContent = S.roomCode;
+  if (lastRoom !== S.roomCode) {
+    lastRoom = S.roomCode;
+    const humans = S.players.filter(p => !p.bot).length;
+    $('targetCount').value = String(Math.max(4, Math.min(7, humans)));
+  }
+  const ul = $('players');
+  ul.innerHTML = '';
+  for (const p of S.players) {
+    const li = document.createElement('li');
+    if (p.bot) li.className = 'bot';
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = p.name + (p.id === S.you ? ' (you)' : '');
+    li.appendChild(who);
+    if (p.host) {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = 'HOST';
+      li.appendChild(b);
+    }
+    ul.appendChild(li);
+  }
+  $('hostControls').hidden = !S.host;
+  $('lobbyHint').textContent = S.host
+    ? `Fill empty seats with bots if you like, then hit Start Game (min 4 players).`
+    : `Waiting for the host to start the game\u2026`;
+}
+
+/* ---------------- game ---------------- */
+
+function renderGame() {
+  renderTopbar();
+  renderOpponents();
+  renderCenter();
+  renderMySeat();
+  renderHand();
+  renderActionbar();
+  renderLog();
+  renderChoiceModal();
+  renderPickModal();
+  renderGameOver();
+}
+
+function renderTopbar() {
+  $('topCode').textContent = `Room ${S.roomCode}`;
+  $('topDeck').textContent = `🃏 Deck ${S.deckCount}`;
+  $('topDiscard').textContent = `🗑 Discard ${S.discardCount}`;
+  const tt = $('turnTag');
+  if (S.ended) tt.textContent = 'GAME OVER';
+  else {
+    tt.textContent = `${S.turnName}'s turn`;
+    tt.className = 'turn-tag' + (S.turn === S.you ? ' mine' : '');
+  }
+}
+
+function seatClasses(p) {
+  const cls = ['seat'];
+  if (!p.alive) cls.push('dead');
+  if (S.pending && S.pending.player === p.id) cls.push('waiting');
+  if (!S.ended && S.turn === p.id) cls.push('turn');
+  if (aiming && aiming.entry.targets.includes(p.id)) cls.push('targetable');
+  return cls.join(' ');
+}
+
+function buildSeat(p) {
+  const d = document.createElement('div');
+  d.className = seatClasses(p);
+  d.dataset.seat = p.id;
+
+  const top = document.createElement('div');
+  top.className = 'seat-top';
+  const name = document.createElement('span');
+  name.className = 'pname';
+  name.textContent = p.name;
+  top.appendChild(name);
+  const badges = document.createElement('span');
+  badges.className = 'seat-badges';
+  if (p.isSheriff || p.roleKnown) badges.appendChild(roleBadge(p.role, false));
+  else badges.appendChild(roleBadge(null, true));
+  if (p.auto) {
+    const f = document.createElement('span');
+    f.className = 'auto-flag';
+    f.textContent = p.auto && p.name.startsWith('Bot') ? '🤖' : '💤';
+    f.title = p.name.startsWith('Bot') ? 'Bot' : 'Disconnected (auto-played)';
+    badges.appendChild(f);
+  }
+  top.appendChild(badges);
+  d.appendChild(top);
+
+  const sub = document.createElement('div');
+  sub.className = 'seat-sub char-name';
+  sub.textContent = p.charName;
+  sub.title = p.charText;
+  d.appendChild(sub);
+
+  d.appendChild(hpEl(p));
+
+  const meta = document.createElement('div');
+  meta.className = 'seat-meta';
+  const hc = document.createElement('span');
+  hc.className = 'handcount';
+  hc.innerHTML = `<span class="card-back-mini"></span> ${p.handCount}`;
+  hc.title = `${p.handCount} card${p.handCount === 1 ? '' : 's'} in hand`;
+  meta.appendChild(hc);
+  if (!p.alive) {
+    const dead = document.createElement('span');
+    dead.textContent = 'ELIMINATED';
+    dead.style.color = '#ef7b6f';
+    meta.appendChild(dead);
+  }
+  d.appendChild(meta);
+
+  if (p.play.length) {
+    const ip = document.createElement('div');
+    ip.className = 'inplay';
+    for (const c of p.play) {
+      const m = cardEl(c, 'mini');
+      m.title = `${c.name} in play`;
+      ip.appendChild(m);
+    }
+    d.appendChild(ip);
+  }
+  return d;
+}
+
+function renderOpponents() {
+  const box = $('opponents');
+  box.innerHTML = '';
+  for (const p of S.players) {
+    if (p.id === S.you) continue;
+    box.appendChild(buildSeat(p));
+  }
+}
+
+function renderCenter() {
+  const box = $('pileInfo');
+  box.innerHTML = '';
+
+  if (S.pending && S.pending.kind === 'generalStore' && S.pending.cards) {
+    const wrap = document.createElement('div');
+    const t = document.createElement('div');
+    t.className = 'prompt';
+    const picker = playerById(S.pending.player);
+    t.textContent = S.pending.player === S.you
+      ? 'General Store — pick a card!'
+      : `${picker ? picker.name : '?'} is picking from the General Store\u2026`;
+    wrap.appendChild(t);
+    const row = document.createElement('div');
+    row.className = 'cards-row';
+    for (const c of S.pending.cards) {
+      const el = cardEl(c, '');
+      if (S.legal && S.legal.kind === 'generalStore') {
+        el.classList.add('playable');
+        el.dataset.act = 'gs';
+        el.dataset.uid = c.uid;
+      }
+      row.appendChild(el);
+    }
+    wrap.appendChild(row);
+    box.appendChild(wrap);
+    return;
+  }
+
+  const deck = document.createElement('div');
+  deck.className = 'pile-count';
+  deck.innerHTML = `🃏 Draw pile: <b>${S.deckCount}</b>`;
+  box.appendChild(deck);
+
+  const dis = document.createElement('div');
+  dis.className = 'pile-count';
+  dis.innerHTML = `🗑 Discard: <b>${S.discardCount}</b>`;
+  if (S.discardTop) {
+    const m = cardEl(S.discardTop, 'tiny');
+    m.style.marginTop = '6px';
+    dis.appendChild(m);
+    dis.style.flexDirection = 'column';
+  }
+  box.appendChild(dis);
+}
+
+function renderMySeat() {
+  const m = me();
+  const box = $('mySeat');
+  box.innerHTML = '';
+  if (!m) return;
+  const p = playerById(m.id) || {};
+  box.className = '';
+  if (S.pending && S.pending.player === m.id) box.classList.add('waiting');
+  if (!S.ended && S.turn === m.id) box.classList.add('turn');
+  box.style.borderColor = (!S.ended && S.turn === m.id) ? 'var(--gold)' : '';
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  const top = document.createElement('div');
+  top.className = 'seat-top';
+  const name = document.createElement('span');
+  name.className = 'pname';
+  name.textContent = `You — ${m.name}`;
+  top.appendChild(name);
+  top.appendChild(roleBadge(m.role, false));
+  info.appendChild(top);
+
+  const sub = document.createElement('div');
+  sub.className = 'seat-sub char-name';
+  sub.textContent = m.charName;
+  sub.title = m.charText;
+  info.appendChild(sub);
+
+  info.appendChild(hpEl({ hp: m.hp, maxHp: m.maxHp }));
+
+  const meta = document.createElement('div');
+  meta.className = 'seat-meta';
+  const bits = [`🃏 ${m.hand.length}/${m.handLimit}`];
+  if (S.turn === m.id) bits.push(`Bangs left: ${m.bangsLeft >= 99 ? '∞' : m.bangsLeft}`);
+  meta.innerHTML = bits.join(' &nbsp;·&nbsp; ');
+  info.appendChild(meta);
+  box.appendChild(info);
+
+  if (m.alive && p.play && p.play.length) {
+    const ip = document.createElement('div');
+    ip.className = 'inplay';
+    for (const c of p.play) ip.appendChild(cardEl(c, 'mini'));
+    box.appendChild(ip);
+  }
+  if (!m.alive) {
+    const dead = document.createElement('div');
+    dead.style.color = '#ef7b6f';
+    dead.textContent = '💀 You are eliminated — spectating';
+    box.appendChild(dead);
+  }
+}
+
+function renderHand() {
+  const box = $('hand');
+  box.innerHTML = '';
+  const m = me();
+  if (!m) return;
+  if (!m.alive || S.ended) {
+    box.classList.add('empty');
+    box.textContent = S.ended ? 'The game is over.' : 'You are out of the game — watch how it ends.';
+    return;
+  }
+  box.classList.remove('empty');
+  const L = S.legal || {};
+  const playable = new Map((L.playable || []).map(e => [e.uid, e]));
+
+  for (const c of m.hand) {
+    const el = cardEl(c, '');
+    const entry = playable.get(c.uid);
+    const selectable = (mode === 'play' && entry) || mode === 'discard' || mode === 'sid';
+    if (selectable) el.classList.add('playable');
+    if (sel.has(c.uid)) el.classList.add('selected');
+    if (mode === 'play' && !entry) el.style.opacity = '.62';
+    el.title = entry && entry.hint ? entry.hint : c.name;
+    box.appendChild(el);
+  }
+}
+
+/* ---------------- action bar ---------------- */
+
+function btn(label, actName, data, cls) {
+  const b = document.createElement('button');
+  b.className = `btn ${cls || ''}`;
+  b.innerHTML = label;
+  b.dataset.act = actName;
+  if (data) Object.assign(b.dataset, data);
+  return b;
+}
+
+function promptText(text, sub) {
+  const w = document.createElement('div');
+  const p = document.createElement('div');
+  p.className = 'prompt';
+  p.textContent = text;
+  w.appendChild(p);
+  if (sub) {
+    const s = document.createElement('div');
+    s.className = 'prompt sub';
+    s.textContent = sub;
+    w.appendChild(s);
+  }
+  return w;
+}
+
+function renderActionbar() {
+  const bar = $('actionbar');
+  bar.innerHTML = '';
+  if (!S || S.ended) { bar.appendChild(promptText('Game over.')); return; }
+  const L = S.legal || {};
+  const m = me();
+  if (!m || !m.alive) { bar.appendChild(promptText('Spectating\u2026')); return; }
+
+  switch (L.kind) {
+    case 'play': {
+      if (mode === 'sid') {
+        bar.appendChild(promptText('Sid Ketchum: select exactly 2 cards to discard for +1 life.',
+          `Selected ${sel.size}/2`));
+        bar.appendChild(btn('Confirm heal', 'sid-confirm', null, 'primary'));
+        bar.appendChild(btn('Cancel', 'cancel-sel'));
+        break;
+      }
+      if (aiming) {
+        const e = aiming.entry;
+        bar.appendChild(promptText(e.hint || 'Choose a target:', 'Click a highlighted player'));
+        bar.appendChild(btn('Cancel', 'cancel-sel', null, 'danger'));
+        break;
+      }
+      if (sel.size === 1) {
+        const uid = [...sel][0];
+        const entry = (L.playable || []).find(x => x.uid === uid);
+        if (entry && !entry.targets.length) {
+          bar.appendChild(promptText(`Play ${entry.name}?`, entry.hint || ''));
+          bar.appendChild(btn(`▶ Play ${ICONS[entry.key] || ''} ${entry.name}`, 'play-sel', null, 'primary'));
+          bar.appendChild(btn('Cancel', 'cancel-sel'));
+          break;
+        }
+      }
+      const lead = document.createElement('div');
+      lead.className = 'prompt';
+      lead.textContent = 'Your turn — play cards or end your turn.';
+      const sub = document.createElement('div');
+      sub.className = 'prompt sub';
+      sub.textContent = 'Click a card to select it. Blue cards stay in front of you.';
+      lead.appendChild(sub);
+      bar.appendChild(lead);
+      if (L.canHeal) bar.appendChild(btn('⛑ Use ability (2 cards → +1❤)', 'sid-mode'));
+      bar.appendChild(btn('End Turn ▸', 'end', null, 'primary'));
+      break;
+    }
+    case 'missed': {
+      bar.appendChild(promptText(L.prompt || 'You are shot!', `Play Missed! or take the hit`));
+      if (L.need > 1) {
+        const n = document.createElement('span');
+        n.className = 'need-badge';
+        n.textContent = `need ${L.need} Missed!`;
+        bar.appendChild(n);
+      }
+      for (const c of L.cards) bar.appendChild(btn(`${ICONS[c.key] || ''} Play ${c.name}`, 'resp', { uid: c.uid }, 'primary'));
+      bar.appendChild(btn('Take the hit 💥', 'pass', null, 'danger'));
+      break;
+    }
+    case 'indians':
+    case 'duel': {
+      bar.appendChild(promptText(L.prompt || (L.kind === 'indians' ? 'Indians!' : 'Duel!'),
+        'Discard a Bang! or lose 1 life'));
+      for (const c of L.cards) bar.appendChild(btn(`${ICONS[c.key] || ''} Play ${c.name}`, 'resp', { uid: c.uid }, 'primary'));
+      bar.appendChild(btn('Lose 1 life', 'pass', null, 'danger'));
+      break;
+    }
+    case 'dying': {
+      bar.appendChild(promptText('\u2620 You are dying! Play a Beer to survive.', L.prompt || ''));
+      if (L.beers.length) bar.appendChild(btn(`🍺 Drink Beer (${L.beers.length})`, 'resp', { uid: L.beers[0] }, 'primary'));
+      if (L.canSid) bar.appendChild(btn('⛑ Sid: discard 2 → +1❤', 'sid-dying'));
+      bar.appendChild(btn('Give up\u2026', 'pass', null, 'danger'));
+      break;
+    }
+    case 'discard': {
+      bar.appendChild(promptText(L.prompt || `Discard ${L.need} card(s).`,
+        `Select ${L.need} card${L.need > 1 ? 's' : ''} in your hand`));
+      bar.appendChild(btn(`Discard selected (${sel.size}/${L.need})`, 'discard-sel', null, 'primary'));
+      break;
+    }
+    case 'kit':
+    case 'jesse':
+    case 'pedro':
+      // rendered as modal
+      break;
+    case 'generalStore':
+      bar.appendChild(promptText('General Store — pick a card below!'));
+      break;
+    default: {
+      if (S.pending) {
+        const p = playerById(S.pending.player);
+        const who = p ? (p.id === S.you ? 'You' : p.name) : '?';
+        bar.appendChild(promptText(`${who} ${S.pending.player === S.you ? 'must act\u2026' : 'is choosing\u2026'}`,
+          S.pending.prompt || ''));
+      } else {
+        bar.appendChild(promptText(`Waiting for ${S.turnName}\u2026`));
+      }
+    }
+  }
+}
+
+/* ---------------- modals ---------------- */
+
+function modalPanel(title, sub) {
+  const p = document.createElement('div');
+  p.className = 'panel';
+  const h = document.createElement('h2');
+  h.textContent = title;
+  p.appendChild(h);
+  if (sub) {
+    const s = document.createElement('p');
+    s.className = 'sub';
+    s.textContent = sub;
+    p.appendChild(s);
+  }
+  return p;
+}
+
+function renderChoiceModal() {
+  const box = $('choiceModal');
+  const L = S && S.legal;
+  if (S && !S.ended && L && (L.kind === 'kit' || L.kind === 'jesse' || L.kind === 'pedro')) {
+    box.innerHTML = '';
+    let panel;
+    if (L.kind === 'kit') {
+      panel = modalPanel('Kit Carlson', 'Look at the top 3 cards — click the one to put BACK (you keep the other two).');
+      const row = document.createElement('div');
+      row.className = 'cards-row';
+      for (const c of L.cards) {
+        const el = cardEl(c, 'playable');
+        el.dataset.act = 'kit';
+        el.dataset.uid = c.uid;
+        row.appendChild(el);
+      }
+      panel.appendChild(row);
+    } else if (L.kind === 'jesse') {
+      panel = modalPanel('Jesse Jones', L.prompt);
+      const row = document.createElement('div');
+      row.className = 'options-row';
+      row.appendChild(btn('🃏 Draw from the deck', 'jesse', { src: 'deck' }, 'primary'));
+      for (const p of L.players) {
+        row.appendChild(btn(`🖐 Take from ${p.name} (${p.handCount})`, 'jesse', { src: p.id }));
+      }
+      panel.appendChild(row);
+    } else {
+      panel = modalPanel('Pedro Ramirez', L.prompt);
+      const row = document.createElement('div');
+      row.className = 'options-row';
+      row.appendChild(btn('🃏 Draw from the deck', 'pedro', { src: 'deck' }, 'primary'));
+      if (L.discardTop) {
+        const b = btn('🗑 Take the top discard', 'pedro', { src: 'discard' }, 'primary');
+        row.appendChild(b);
+        const cardRow = document.createElement('div');
+        cardRow.className = 'cards-row';
+        cardRow.appendChild(cardEl(L.discardTop, ''));
+        panel.appendChild(cardRow);
+      }
+      panel.appendChild(row);
+    }
+    box.appendChild(panel);
+    box.hidden = false;
+    return;
+  }
+  box.hidden = true;
+  box.innerHTML = '';
+}
+
+function renderPickModal() {
+  const box = $('pickModal');
+  if (!pick) { box.hidden = true; box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  const panel = modalPanel('Cat Balou / Panic!', `Choose what to take or discard from ${pick.name}`);
+  const row = document.createElement('div');
+  row.className = 'options-row';
+  for (const o of pick.opts) {
+    if (o.kind === 'hand') row.appendChild(btn('🃏 A random card from their hand', 'pick-hand', null, 'primary'));
+    else {
+      const el = cardEl(o.card, 'playable');
+      el.dataset.act = 'pick-card';
+      el.dataset.uid = o.card.uid;
+      row.appendChild(el);
+    }
+  }
+  panel.appendChild(row);
+  const cancel = btn('Cancel', 'pick-cancel', null, 'ghost');
+  panel.appendChild(cancel);
+  box.appendChild(panel);
+  box.hidden = false;
+}
+
+function winnersText() {
+  if (!S.winners) return '';
+  const w = S.winners[0];
+  if (w === 'sheriff') return 'Sheriff & Deputies win!';
+  if (w === 'renegade') return 'The Renegade wins — the new Sheriff!';
+  return 'Outlaws win!';
+}
+
+function renderGameOver() {
+  const box = $('gameover');
+  if (!S || !S.ended) { box.hidden = true; box.innerHTML = ''; return; }
+  const m = me();
+  const won = m && S.winners && S.winners.includes(m.role);
+  box.innerHTML = '';
+  const panel = modalPanel('☠ GAME OVER ☠', winnersText() +
+    (m ? ` — You (${ROLE_LABEL[m.role]}) ${won ? 'WIN!' : 'lose.'}` : ''));
+
+  const tbl = document.createElement('table');
+  tbl.className = 'result';
+  tbl.innerHTML = '<tr><th>Player</th><th>Character</th><th>Role</th><th>Status</th></tr>';
+  for (const p of S.players) {
+    const tr = document.createElement('tr');
+    if (!p.alive) tr.className = 'dead';
+    if (S.winners && S.winners.includes(p.role)) tr.classList.add('winner');
+    tr.innerHTML = `<td>${escapeHtml(p.name)}${p.id === S.you ? ' (you)' : ''}</td>
+      <td>${escapeHtml(p.charName)}</td>
+      <td><span class="role ${p.role}">${ROLE_LABEL[p.role]}</span></td>
+      <td>${p.alive ? `${p.hp}❤ alive` : 'eliminated'}</td>`;
+    tbl.appendChild(tr);
+  }
+  panel.appendChild(tbl);
+
+  const row = document.createElement('div');
+  row.className = 'options-row';
+  if (S.host) row.appendChild(btn('🔄 Play Again', 'play-again', null, 'primary'));
+  row.appendChild(btn('Leave table', 'leave', null, 'ghost'));
+  panel.appendChild(row);
+  box.appendChild(panel);
+  box.hidden = false;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/* ---------------- log ---------------- */
+
+function renderLog() {
+  const box = $('log');
+  const nearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+  box.innerHTML = '';
+  for (const e of S.log || []) {
+    const d = document.createElement('div');
+    if (e.cls) d.className = e.cls;
+    d.textContent = e.t;
+    box.appendChild(d);
+  }
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+  else box.scrollTop = box.scrollHeight; // always follow the action
+}
+
+/* ---------------- interactions ---------------- */
+
+function onHandClick(uid) {
+  const L = S.legal || {};
+  if (mode === 'play') {
+    const entry = (L.playable || []).find(e => e.uid === uid);
+    if (!entry) { sel = new Set(); aiming = null; render(); return; }
+    if (sel.has(uid)) { sel = new Set(); aiming = null; render(); return; }
+    sel = new Set([uid]);
+    aiming = entry.targets.length ? { uid, entry } : null;
+    render();
+  } else if (mode === 'discard') {
+    if (sel.has(uid)) sel.delete(uid);
+    else if (sel.size < (L.need || 0)) sel.add(uid);
+    render();
+  } else if (mode === 'sid') {
+    if (sel.has(uid)) sel.delete(uid);
+    else if (sel.size < 2) sel.add(uid);
+    render();
+  }
+}
+
+function onHandDoubleClick(uid) {
+  if (mode !== 'play' || aiming) return;
+  const L = S.legal || {};
+  const entry = (L.playable || []).find(e => e.uid === uid);
+  if (entry && !entry.targets.length) act({ t: 'play', uid });
+}
+
+function onSeatClick(seatId) {
+  if (!aiming) return;
+  const { uid, entry } = aiming;
+  if (!entry.targets.includes(seatId)) return;
+
+  if (entry.needsPick) {
+    const t = playerById(seatId);
+    const opts = [];
+    if (t && t.handCount > 0) opts.push({ kind: 'hand' });
+    if (t) for (const c of t.play) opts.push({ kind: 'play', card: c });
+    if (opts.length === 1) {
+      sendPick(opts[0]);
+      return;
+    }
+    pick = { uid, targetId: seatId, name: t ? t.name : '?', opts };
+    aiming = null;
+    sel = new Set();
+    render();
+    return;
+  }
+  act({ t: 'play', uid, target: seatId });
+}
+
+function sendPick(o) {
+  if (!pick) return;
+  const a = { t: 'play', uid: pick.uid, target: pick.targetId };
+  if (o.kind === 'hand') a.pick = 'hand';
+  else { a.pick = 'play'; a.card = o.card.uid; }
+  pick = null;
+  act(a);
+}
+
+function dyingSidCards() {
+  const m = me();
+  const sorted = [...m.hand].sort((a, b) => cardValueLocal(a.key) - cardValueLocal(b.key));
+  return sorted.slice(0, 2).map(c => c.uid);
+}
+
+function cardValueLocal(key) {
+  const v = { beer: 9, missed: 8, bang: 7, barrel: 7, gatling: 6, indians: 5, jail: 5, duel: 5, catbalou: 5, saloon: 5, scope: 5, mustang: 5, panic: 4, stagecoach: 4, wellsfargo: 4, generalstore: 4, dynamite: 3 };
+  return v[key] !== undefined ? v[key] : 4;
+}
+
+/* ---------------- global click delegation ---------------- */
+
+document.addEventListener('click', e => {
+  // hand card
+  const hc = e.target.closest('#hand .card[data-uid]');
+  if (hc) { onHandClick(hc.dataset.uid); return; }
+
+  // seat target
+  const seat = e.target.closest('.seat[data-seat]');
+  if (seat && aiming) { onSeatClick(seat.dataset.seat); return; }
+
+  // generic action buttons / cards
+  const el = e.target.closest('[data-act]');
+  if (!el) {
+    if (aiming && !e.target.closest('#actionbar')) {
+      aiming = null; sel = new Set(); render();
+    }
+    return;
+  }
+  const a = el.dataset.act;
+  const d = el.dataset;
+
+  switch (a) {
+    case 'leave': location.reload(); break;
+    case 'end': act({ t: 'end' }); break;
+    case 'pass': act({ t: 'respond', pass: true }); break;
+    case 'resp': act({ t: 'respond', uid: d.uid }); break;
+    case 'cancel-sel': sel = new Set(); aiming = null; mode = 'play'; render(); break;
+    case 'play-sel': { act({ t: 'play', uid: [...sel][0] }); break; }
+    case 'discard-sel': {
+      const L = S.legal;
+      if (sel.size !== L.need) { showToast(`Select exactly ${L.need} card(s)`); break; }
+      for (const uid of sel) act({ t: 'discard', uid });
+      break;
+    }
+    case 'sid-mode': mode = 'sid'; sel = new Set(); render(); break;
+    case 'sid-confirm': {
+      if (sel.size !== 2) { showToast('Select exactly 2 cards'); break; }
+      act({ t: 'sid', cards: [...sel] });
+      break;
+    }
+    case 'sid-dying': act({ t: 'sid', cards: dyingSidCards() }); break;
+    case 'kit': act({ t: 'choose', uid: d.uid }); break;
+    case 'jesse': act({ t: 'choose', source: d.src }); break;
+    case 'pedro': act({ t: 'choose', source: d.src }); break;
+    case 'gs': act({ t: 'choose', uid: d.uid }); break;
+    case 'pick-hand': sendPick({ kind: 'hand' }); break;
+    case 'pick-card': sendPick({ kind: 'play', card: { uid: d.uid } }); break;
+    case 'pick-cancel': pick = null; render(); break;
+    case 'play-again': socket.emit('playAgain', {}, res => { if (res && res.error) showToast(res.error); }); break;
+  }
+});
+
+document.addEventListener('dblclick', e => {
+  const hc = e.target.closest('#hand .card[data-uid]');
+  if (hc) onHandDoubleClick(hc.dataset.uid);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (pick) { pick = null; render(); }
+    else if (aiming || sel.size) { aiming = null; sel = new Set(); mode = S && S.legal && S.legal.kind === 'play' ? 'play' : mode; render(); }
+  }
+});
+
+/* ---------------- timer ---------------- */
+
+setInterval(() => {
+  const t = $('timerTag');
+  if (!S || S.view !== 'game' || !S.deadline) { t.textContent = ''; return; }
+  const left = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000));
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
+  t.textContent = `${mm}:${ss}`;
+  t.className = 'timer' + (left <= 10 ? ' low' : '');
+}, 400);
+
+/* ---------------- login / lobby events ---------------- */
+
+function doCreate() {
+  const name = $('name').value.trim();
+  if (!name) { $('err').textContent = 'Enter your name first'; return; }
+  socket.emit('createRoom', { name }, res => {
+    if (res && res.error) $('err').textContent = res.error;
+  });
+}
+
+function doJoin() {
+  const name = $('name').value.trim();
+  const code = $('code').value.trim().toUpperCase();
+  if (!name) { $('err').textContent = 'Enter your name first'; return; }
+  if (code.length !== 4) { $('err').textContent = 'Room codes are 4 letters'; return; }
+  socket.emit('joinRoom', { code, name }, res => {
+    if (res && res.error) $('err').textContent = res.error;
+  });
+}
+
+$('create').addEventListener('click', doCreate);
+$('join').addEventListener('click', doJoin);
+$('code').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); });
+
+$('copy').addEventListener('click', () => {
+  if (!S) return;
+  navigator.clipboard && navigator.clipboard.writeText(S.roomCode);
+  showToast('Room code copied!');
+});
+
+$('fillBots').addEventListener('click', () => {
+  socket.emit('fillBots', {
+    count: $('targetCount').value,
+    difficulty: $('botDiff').value,
+  }, res => { if (res && res.error) $('err2').textContent = res.error; else $('err2').textContent = ''; });
+});
+
+$('start').addEventListener('click', () => {
+  socket.emit('startGame', {}, res => { if (res && res.error) $('err2').textContent = res.error; });
+});
+
+  </script>
+</body>
+</html>
